@@ -1,0 +1,80 @@
+---
+title: "11.3.1"
+author: "JMark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+# Required packages
+```{r message=FALSE, warning=FALSE}
+if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
+```
+
+# LP Formulation
+
+Descision variables
+
+* p1, p2, p3, p4, p5
+
+Maximize:
+
+* 10p1 + 17p2 + 16p3 + 8p4 + 14p5
+  
+Subject to:
+
+* 48p1 + 96p2 + 80p3 + 32p4 + 64p5 <= 160
+
+Objective function
+```{r}
+obj = c(10, 17, 16, 8, 14)
+```
+
+Requirments
+```{r}
+req.capital = c(48, 96, 80, 32, 64)
+```
+
+* `lp` assumes varables >=0
+
+Constraints
+```{r}
+con.capital = 160
+```
+
+Solve (general LP)
+```{r}
+lhs = rbind(req.capital)
+dir = c("<=")
+rhs = c(con.capital)
+
+
+model = lp ("max", obj, lhs, dir, rhs)
+model$objval
+model$solution
+
+cbind((rowSums(lhs*model$solution)), dir, rhs)
+```
+
+* `model$objval` is the value of the __Objective Function__
+* `model$solution` are the values of the __Descision Variables__
+* `cbind(...)` is there so you can _double check_ your work
+
+Solve (binary LP)
+```{r}
+model = lp ("max", obj, lhs, dir, rhs, all.bin = TRUE)
+model$objval
+model$solution
+
+cbind((rowSums(lhs*model$solution)), dir, rhs)
+```
+
+* The only thing that changed was in `all.int = TRUE` to `all.bin = TRUE`
+

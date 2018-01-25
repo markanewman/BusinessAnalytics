@@ -1,0 +1,9 @@
+# Visual Studio
+.vs/
+
+# WinMerge
+*.bak
+
+# RStudio
+.Rhistory
+*.html
