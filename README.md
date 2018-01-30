@@ -6,6 +6,10 @@ This repo contains a R implementation of _some_ of the samples found in [Busines
 
 This repo was started because while taking [Anly 705][anly705] at [Harrisburg University][hu] I realized that I needed to go the extra mile in my understanding. I could not just rely on [Analytics Solver][solver] which is an Excel program that comes with the book. I needed to write down the formal declarations because some of the homework assigned needed to be more than just solutions. Moreover, some presented ambiguous requirements that could be interpreted different ways.
 
+# Organisation
+
+Folders correspond to the names of the chapters. Files correspond to the different sections. However, different editions of the book vary so YMMV. Also, I am only doing the samples for the chapters that are in the scope of the class that have a reasonable translation. As an example, chapter 5: Data Exploration and Preparation does not seem to have a direct equivalent. It is necessary to do in any data science project, but the principals carry, not necessarily the tasks. It could also be that the sample was assigned as a homework ot that I am behind on my personal goals.
+
 
 ---------
 
