@@ -86,12 +86,12 @@ rbarpmps = function(a, b) {
 }
 dirnum2sym = function(num) {
   
-  sym = c("<", "<=", "=", "==", ">", ">=")
+  sym = c("<=", ">=", "=")
   
   l = length(num)
   res = vector(mode="character", length=l)
   for(i in 1:l) {
-    res[i] = sym[num[i]+1]
+    res[i] = sym[num[i]]
   }
   
   return(res)

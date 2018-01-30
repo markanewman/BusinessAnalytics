@@ -1,0 +1,133 @@
+---
+title: "10.2 Transportation Model"
+author: "Mark Newman"
+output:
+  html_document: default
+---
+
+# Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+# Required packages
+```{r message=FALSE, warning=FALSE}
+if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
+source("../Helper Scripts/rbindPattern.r")
+source("../Helper Scripts/lpPrettyPrint.r")
+```
+
+# LP Formulation
+
+Descision variables
+
+* From: (M)inneapolis, (P)ittsburgh, (T)ucson
+* To: (A)tlanta, (B)oston, (C)hicago, (D)enver
+
+Objective function
+
+* Minimize: .6MA + .56MB + .22MC + .4MD + .36PA + .3PB + .28PC + .58PD + .65TA + .68TB + .55TC + .42TD
+  
+Subject to:
+
+* Minneapolis: MA + MB + MC + MD <= 9000
+* Pittsburgh: PA + PB + PC + PD <= 12000
+* Tucson: TA + TB + TC + TD <= 13000
+* Atlanta: MA + PA + TA >= 7500
+* Boston: MB + PB + TB >= 8500
+* Chicago: MC + PC + TC >= 9500
+* Denver: MD + PD + TD >= 8000
+
+# R translation
+
+Descision variables
+```{r}
+dv.f = c("m", "p", "t")
+dv.t = c("a", "b", "c", "d")
+dv = c("MA","MB", "MC", "MD", "PA", "PB", "PC", "PD", "TA", "TB", "TC", "TD")
+```
+
+* the `dv` here is the cross product of the to and from variables
+
+Cost Matrix
+```{r}
+cost.m = c(.60, .56, .22, .40)
+cost.p = c(.36, .30, .28, .58)
+cost.t = c(.65, .68, .55, .42)
+cost = rbindPattern("cost\\..+")
+```
+
+* The regular expression `cost\\..+` matches anything that starts with "cost." and has at least one other character on the end
+* Format your costs with the same number of decimal places as a form of visual QA
+
+Capacity & Demand
+```{r}
+cap = c(9000, 12000, 13000)
+dem = c(7500, 8500, 9500, 8000)
+```
+
+Objective function
+```{r}
+obj = c(.60, .56, .22, .40, .36, .3, .28, .58, .65, .68, .55, .42)
+names(obj) = dv
+```
+
+* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
+
+Requirments
+```{r}
+req.1m = c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
+req.2p = c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)
+req.3t = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1)
+req.4a = c(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+req.5b = c(0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
+req.6c = c(0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0)
+req.7d = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+```
+
+* `lp` assumes all varables are >= 0, so we don't need to add that in too
+* `req.#??` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
+  * The # in `req.#??` is to force the sort order so we can make sure we get the direction (>= & <=) in the right order
+
+Constraints
+```{r}
+con.1m = cap[1]
+con.2p = cap[2]
+con.3t = cap[3]
+con.4a = dem[1]
+con.5b = dem[2]
+con.6c = dem[3]
+con.7d = dem[4]
+```
+
+Solve (general LP)
+```{r}
+lhs = rbindPattern("req\\..+")
+dir = c("<=", "<=", "<=", ">=", ">=", ">=", ">=")
+rhs = rbindPattern("con\\..+")
+
+model = lpSolve::lp ("min", obj, lhs, dir, rhs)
+model$objval
+model$solution
+
+lppp(model)
+```
+
+* `model$objval` is the value of the __Objective Function__
+* `model$solution` are the values of the __Descision Variables__
+* `lppp(...)` so you can see a pretty print of the `model`
+
+# Book results
+
+Per page 280 "... the solution shown in Figure 10.4, which achieves the minimum cost of $12,025"
+
+* MC = 9000
+* PA = 3500, PB = 8500
+* TA = 4000, TC = 500, TD = 8000 
+
+This matches our result `$Solution` MA=0,MB=0,MC=9000,MD=0,PA=3500,PB=8500,PC=0,PD=0,TA=4000,TB=0,TC=499.999999999999,TD=8000 yealds 12025
+
+* Remove 0s: MC=9000, PA=3500, PB=8500, TA=4000, TC=499.999999999999, TD=8000 yealds 12025
+* Round: MC=9000, PA=3500, PB=8500, TA=4000, TC=500, TD=8000 yealds 12025
+
