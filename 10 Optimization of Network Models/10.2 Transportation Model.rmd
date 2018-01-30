@@ -69,10 +69,11 @@ dem = c(7500, 8500, 9500, 8000)
 
 Objective function
 ```{r}
-obj = c(.60, .56, .22, .40, .36, .3, .28, .58, .65, .68, .55, .42)
+obj = as.vector(t(cost))
 names(obj) = dv
 ```
 
+* `as.vector(t(cost))` unrolls the cost matrix above by row, which matched how we declaired our `dv`
 * naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
 
 Requirments
@@ -92,31 +93,27 @@ req.7d = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
 
 Constraints
 ```{r}
-con.1m = cap[1]
-con.2p = cap[2]
-con.3t = cap[3]
-con.4a = dem[1]
-con.5b = dem[2]
-con.6c = dem[3]
-con.7d = dem[4]
+con = c(cap, dem)
 ```
 
 Solve (general LP)
 ```{r}
 lhs = rbindPattern("req\\..+")
 dir = c("<=", "<=", "<=", ">=", ">=", ">=", ">=")
-rhs = rbindPattern("con\\..+")
+rhs = con
 
-model = lpSolve::lp ("min", obj, lhs, dir, rhs)
+model = lpSolve::lp ("min", obj, lhs, dir, rhs, all.int=TRUE)
 model$objval
 model$solution
 
 lppp(model)
 ```
 
+* `all.int=TRUE` forces in integer solution. If you dont have this TC will be 499.999999999999
 * `model$objval` is the value of the __Objective Function__
 * `model$solution` are the values of the __Descision Variables__
 * `lppp(...)` so you can see a pretty print of the `model`
+
 
 # Book results
 
@@ -126,8 +123,9 @@ Per page 280 "... the solution shown in Figure 10.4, which achieves the minimum 
 * PA = 3500, PB = 8500
 * TA = 4000, TC = 500, TD = 8000 
 
-This matches our result `$Solution` MA=0,MB=0,MC=9000,MD=0,PA=3500,PB=8500,PC=0,PD=0,TA=4000,TB=0,TC=499.999999999999,TD=8000 yealds 12025
+This matches our result `$Solution` MA=0,MB=0,MC=9000,MD=0,PA=3500,PB=8500,PC=0,PD=0,TA=4000,TB=0,TC=500,TD=8000 yealds 12025
 
-* Remove 0s: MC=9000, PA=3500, PB=8500, TA=4000, TC=499.999999999999, TD=8000 yealds 12025
-* Round: MC=9000, PA=3500, PB=8500, TA=4000, TC=500, TD=8000 yealds 12025
+* Remove 0s: MC=9000,PA=3500,PB=8500,TA=4000,TC=500,TD=8000 yealds 12025
+
+
 
