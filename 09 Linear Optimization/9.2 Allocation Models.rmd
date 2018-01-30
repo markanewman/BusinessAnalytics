@@ -15,6 +15,7 @@ options(scipen = 999)
 ```{r message=FALSE, warning=FALSE}
 if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
 source("../Helper Scripts/rbindPattern.r")
+source("../Helper Scripts/lpPrettyPrint.r")
 ```
 
 # LP Formulation
@@ -23,9 +24,9 @@ Descision variables
 
 * (c)hair, (d)esk, (t)able
 
-Maximize:
+Objective function
 
-* 15c + 24d + 18t
+* Maximize: 15c + 24d + 18t
   
 Subject to:
 
@@ -37,10 +38,20 @@ Subject to:
   * d <= 300
   * t <= 100
 
+# R translation
+
+Descision variables
+```{r}
+dv = c("c","d","t")
+```
+
 Objective function
 ```{r}
 obj = c(15,24,18)
+names(obj) = dv
 ```
+
+* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
 
 Requirments
 ```{r}
@@ -52,8 +63,9 @@ req.dpd = c(0,1,0)
 req.dpt = c(0,0,1)
 ```
 
-* `lp` assumes varables >=0
-* `req.dpc` is demand potential c <= 360.
+* `lp` assumes all varables are >= 0, so we don't need to add that in too
+* `req.???` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
+* `req.dpc` is demand potential c <= 360
   * c <= 360 is rewriten as
   * 1c <=360 is rewriten as
   * 1c + 0d + 0t <= 360 is rewriten as
@@ -75,15 +87,21 @@ lhs = rbindPattern("req\\..+")
 dir = rep_len("<=", dim(lhs)[1])
 rhs = rbindPattern("con\\..+")
 
-model = lp ("max", obj, lhs, dir, rhs)
+model = lpSolve::lp ("max", obj, lhs, dir, rhs)
 model$objval
 model$solution
 
-cbind((rowSums(lhs*model$solution)), dir, rhs)
+lppp(model)
 ```
 
-* `rbindpattern`
-* `req\\..+` matches anything that starts with "req." and has at least one other character on the end
+* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
 * `model$objval` is the value of the __Objective Function__
 * `model$solution` are the values of the __Descision Variables__
-* `cbind(...)` is there so you can _double check_ your work
+* `lppp(...)` so you can see a pretty print of the `model`
+
+# Book results
+
+Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
+
+This matches our result `$Solution` c=0,d=275,t=100 yealds 8400
+
