@@ -1,0 +1,271 @@
+---
+title: "11.5.1 Facility Location Model (Capacitated)"
+author: "Mark Newman"
+output:
+  html_document: default
+---
+
+# Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+# Required packages
+```{r message=FALSE, warning=FALSE}
+if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
+# source("../Helper Scripts/rbindPattern.r")
+source("../Helper Scripts/lpPrettyPrint.r")
+source("../Helper Scripts/transportation.r")
+```
+
+# Tables
+
+## From
+
+From | Capacity | Cost
+:--:|:--:|:--:
+(A)lbuquerque | 16 | 140
+(Da)llas | 20 | 150
+(De)nver | 10 | 100
+(H)ouston | 10 | 110
+(P)hoenix | 12 | 125
+(S)an (A)ntonio | 10 | 120
+
+## To
+
+To | Demand
+:--:|:--:
+(A)lbuquerque | 3.2
+(B)oise | 2.5
+(Da)llas | 6.8
+(De)nver | 4.0
+(H)ouston | 9.6
+(O)klahoma | 3.5
+(P)hoenix | 5.0
+(S)alt (L)ake (C)ity | 1.8
+(S)an (A)ntonio | 7.4
+(W)ichita | 2.7
+
+## Cost
+From \\ To | A | B | Da | De | H | O | P | SLC | SA | W
+:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:
+A  | 00.00 | 47.00 | 32.00 | 22.00 | 42.50 | 27.00 | 23.00 | 30.00 | 36.50 | 29.50
+Da | 32.00 | 79.50 | 00.00 | 39.00 | 12.50 | 10.50 | 50.00 | 63.00 | 13.50 | 17.00
+De | 21.00 | 42.00 | 39.00 | 00.00 | 51.50 | 31.50 | 40.50 | 24.00 | 47.50 | 26.00
+H  | 42.50 | 91.00 | 12.50 | 51.50 | 00.00 | 23.00 | 58.00 | 72.00 | 10.00 | 31.00
+P  | 23.00 | 49.00 | 50.00 | 40.50 | 58.00 | 49.00 | 00.00 | 32.50 | 50.00 | 52.00
+SA | 36.50 | 83.50 | 13.50 | 47.50 | 10.00 | 24.00 | 50.00 | 66.50 | 00.00 | 32.00
+
+# LP Formulation
+
+Descision variables
+
+* xij = quanity shiped from i to j
+    * i = A, Da, De, H, P, SA
+    * j = A, B, Da, De, H, O, P, SLC, SA, W
+* yi = is location i open
+
+Minimize:
+
+* Fixed Cost + Variable Cost
+    * Fixed Cost: sum(i\*costi)
+    * Variable Cost: sum(xij\*costij)
+
+Subject to:
+
+* yi is binary
+* sent <= capacity
+* demand <= received
+* Links:
+    * xij - Myi <= 0
+
+# R translation
+
+Tables
+```{r}
+from = data.frame(matrix(c("A",16,140,"Da",20,150,"De",10,100,"H",10,110,"P",12,125,"SA",10,120), nrow = 6, ncol=3, byrow=TRUE), stringsAsFactors = FALSE)
+colnames(from) = c("From", "Capacity", "Cost")
+
+to = data.frame(matrix(c("A",3.2,"B",2.5,"Da",6.8,"De",4.0,"H",9.6,"O",3.5,"P",5.0,"SLC",1.8,"SA",7.4,"W",2.7), nrow = 10, ncol=2, byrow=TRUE), stringsAsFactors = FALSE)
+colnames(to) = c("To", "Demand")
+
+cost = data.frame(matrix(c(00.00,47.00,32.00,22.00,42.50,27.00,23.00,30.00,36.50,29.50,32.00,79.50,00.00,39.00,12.50,10.50,50.00,63.00,13.50,17.00,21.00,42.00,39.00,00.00,51.50,31.50,40.50,24.00,47.50,26.00,42.50,91.00,12.50,51.50,00.00,23.00,58.00,72.00,10.00,31.00,23.00,49.00,50.00,40.50,58.00,49.00,00.00,32.50,50.00,52.00,36.50,83.50,13.50,47.50,10.00,24.00,50.00,66.50,00.00,32.00), nrow = 6, ncol=10, byrow=TRUE), stringsAsFactors = FALSE)
+colnames(cost) = to$To
+rownames(cost) = from$From
+```
+
+Descision variables
+```{r}
+dv.fixed = sprintf("lnk-%s", from$From)
+dv.variable = fromTo2DV(from$From, to$To)
+dv = c(dv.fixed, dv.variable)
+
+rm(dv.fixed, dv.variable)
+```
+
+* `sprintf(...)` is used because we want to be clear on the 2 different types of DVs 
+
+Objective function
+```{r}
+obj.fixed = from$Cost
+obj.variable = as.vector(t(cost))
+obj = c(obj.fixed, obj.variable)
+names(obj) = dv
+
+rm(obj.fixed, obj.variable)
+length(dv) == length(obj)
+```
+
+* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
+* `length(dv) == length(obj)` is here because we want to double check our work
+
+Requirments
+```{r}
+req.Capacity = CapacityRequirments(length(from$Capacity), length(from$To))
+req.Demand = DemandRequirments(length(from$Capacity), length(from$To))
+req.Link = LinkRequirments(length(from$Capacity), length(from$To), sum(to$Demand)+1)
+
+req = rbind(req.Capacity, req.Demand, req.Link)
+rm(req.Capacity, req.Demand, req.Link)
+```
+
+* `lp` assumes varables >=0
+* The form of the capacity requirment for 2 "from"s and 3 "to"s is
+    * f1: c(1,1,1,0,0,0)
+    * f2: c(0,0,0,1,1,1)
+* The form of the demand requirment for 2 "from"s and 3 "to"s is
+    * f1: c(1,0,1,0,1,0)
+    * f2: c(0,1,0,1,0,1)
+* The form of the link requirment for 2 "from"s and 3 "to"s is
+    * f1: c(-M,0,1,0,1,0,1,0)
+    * f2: c(0,-M,0,1,0,1,0,1)
+    * M needs to be set _big_ usualy I set it to sum(demand) + 1
+* Notice the up front padding. It is there because we need a place for our linked variables. `CapacityRequirments` and `DemandRequirments` are based on the general transport model so we need to tack on some room.
+    
+
+Constraints
+```{r}
+con.Capacity = from$Capacity
+con.Demand = to$Demand
+con.link = rep_len(0, length(from$Capacity))
+con = c(con.Capacity, con.Demand, con.link)
+
+rm(con.Capacity, con.Demand, con.link)
+```
+
+* `con.link` is always 0. We just need to put in enough of them 
+
+Solve
+```{r}
+lhs = rbindPattern("req\\..+")
+dir = rep_len("<=", dim(lhs)[1])
+rhs = rbindPattern("con\\..+")
+
+model = lpSolve::lp("max", obj, lhs, dir, rhs, all.int = TRUE)
+lppp(model)
+```
+
+* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
+* `lppp(...)` so you can see a pretty print of the `model`
+
+# Book results
+
+Per page 320 "The optimal product mix ... F1 at 400k, F2 at 100K, and F3 at 50k. This product mix creates $700K in variable profits."
+
+This matches our result `$Solution` F1=400,F2=100,F3=50 yealds 770
+
+# LP Formulation (with linked fixed costs)
+
+Descision variables
+
+* F1, F2, F3, LF1, LF2, LF3
+
+Maximize:
+
+* 1.2F1 + 1.8F2 + 2.2F3 - 60LF1 - 200LF2 - 100LF3
+  
+Subject to:
+
+* Department A: 3F1 + 4F2 + 8F3 <= 2000
+* Department B: 3F1 + 5F2 + 6F3 <= 2000
+* Department C: 2F1 + 3F2 + 9F3 <= 2000
+* Demand:
+    * F1 <= 400
+    * F2 <= 300
+    * F3 <= 50
+* Links:
+    * F1 - MLF1 <= 0 
+    * F2 - MLF2 <= 0 
+    * F3 - MLF3 <= 0 
+
+In the "_Links_" section the form is
+
+* x <= M*y
+* x - My <= 0
+
+where
+
+* x is continous profit
+* y is the linked boolean corsponding to cost
+* M is very large. See below at to what M is.
+
+# R translation
+
+Descision variables
+```{r}
+dv = c("F1","F2","F3","LF1","LF2","LF3")
+```
+
+Objective function
+```{r}
+obj = c(1.2, 1.8, 2.2, -60, -200, -100)
+names(obj) = dv
+```
+
+Requirments
+```{r}
+req.depa = c(3,4,8,0,0,0)
+req.depb = c(3,5,6,0,0,0)
+req.depc = c(2,3,9,0,0,0)
+req.df1 = c(1,0,0,0,0,0)
+req.df2 = c(0,1,0,0,0,0)
+req.df3 = c(0,0,1,0,0,0)
+req.lf1 = c(1,0,0,-401,0,0)
+req.lf2 = c(0,1,0,0,-401,0)
+req.lf3 = c(0,0,1,0,0,-401)
+```
+
+* We added 3 linking variables that means we need to add `,0,0,0` to the end of all existing requirments
+* The `-401` comes from M. It was chosen because the max(con.df#) = 400 < 401
+
+Constraints
+```{r}
+con.depa = 2000
+con.depb = 2000
+con.depc = 2000
+con.df1 = 400
+con.df2 = 300
+con.df3 = 50
+con.lf1 = 0
+con.lf2 = 0
+con.lf3 = 0
+```
+
+Solve
+```{r}
+lhs = rbindPattern("req\\..+")
+dir = rep_len("<=", dim(lhs)[1])
+rhs = rbindPattern("con\\..+")
+
+model = lpSolve::lp("max", obj, lhs, dir, rhs, int.vec = c(1,2,3), binary.vec = c(4,5,6))
+lppp(model)
+```
+
+* `int.vec` and `binary.vec` lets solver sort out what the variable types are
+
+# Book results
+
+Per page 322 "The optimal solution ...profit of \$508k. ... F1 up to its ceiling(400) ... F2 at the level of 160K ..."
+
+This matches our result `$Solution` with 0s and binary links removed F1=400,F2=160 yealds 508
