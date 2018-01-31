@@ -19,7 +19,7 @@ lpPrettyPrint = function(model) {
   
   # objective function
   objfun = if(model$direction == 0) {"Minimize:"} else { "Maximize:"}
-  objfun = paste(objfun, rbarpm(model$objective, dv, c("","+")))
+  objfun = paste(objfun, rbarpm(model$objective, dv, c("*","+")))
   
   # solution
   sol = paste(rbarpm(dv, model$solution, c("=",",")),"yealds", model$objval)

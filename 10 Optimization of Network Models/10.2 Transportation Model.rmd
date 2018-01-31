@@ -96,7 +96,7 @@ Constraints
 con = c(cap, dem)
 ```
 
-Solve (general LP)
+Solve
 ```{r}
 lhs = rbindPattern("req\\..+")
 dir = c("<=", "<=", "<=", ">=", ">=", ">=", ">=")
