@@ -1,5 +1,5 @@
 ---
-title: "11.3.1"
+title: "11.3.1 Capital Budgeting Problem"
 author: "JMark Newman"
 output:
   html_document: default
@@ -56,7 +56,7 @@ dir = c("<=")
 rhs = c(con.capital)
 
 
-model = lp ("max", obj, lhs, dir, rhs)
+model = lpSolve::lp("max", obj, lhs, dir, rhs)
 model$objval
 model$solution
 
@@ -69,12 +69,21 @@ cbind((rowSums(lhs*model$solution)), dir, rhs)
 
 Solve (binary LP)
 ```{r}
-model = lp ("max", obj, lhs, dir, rhs, all.bin = TRUE)
+model = lpSolve::lp("max", obj, lhs, dir, rhs, all.bin = TRUE)
 model$objval
 model$solution
 
 cbind((rowSums(lhs*model$solution)), dir, rhs)
 ```
 
-* The only thing that changed was in `all.int = TRUE` to `all.bin = TRUE`
+* The only thing that changed was adding `all.bin = TRUE`
 
+# Book results
+
+Per page 313 "... optimal NPV is $40 million, but the solution has selected P4 five times"
+
+This matches our result `model$objval = 40` and `model$solution = 0 0 0 5 0`
+
+Page 314 continues with "... as shown in Figure 11.8... we obtain the maximum NPV of $34 million, by accepting P1, P3, and P4..."
+
+This matches our result `model$objval = 34` and `model$solution = 1 0 1 1 0`
