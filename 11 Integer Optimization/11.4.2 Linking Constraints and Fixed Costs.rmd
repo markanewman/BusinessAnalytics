@@ -1,0 +1,188 @@
+---
+title: "11.4.2 Linking Constraints and Fixed Costs"
+author: "Mark Newman"
+output:
+  html_document: default
+---
+
+# Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+# Required packages
+```{r message=FALSE, warning=FALSE}
+if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
+source("../Helper Scripts/rbindPattern.r")
+source("../Helper Scripts/lpPrettyPrint.r")
+```
+
+# LP Formulation (no fixed costs)
+
+Descision variables
+
+* F1, F2, F3
+
+Maximize:
+
+* 1.2F1 + 1.8F2 + 2.2F3
+  
+Subject to:
+
+* Department A: 3F1 + 4F2 + 8F3 <= 2000
+* Department B: 3F1 + 5F2 + 6F3 <= 2000
+* Department C: 2F1 + 3F2 + 9F3 <= 2000
+* Demand:
+    * F1 <= 400
+    * F2 <= 300
+    * F3 <= 50
+  
+# R translation
+
+Descision variables
+```{r}
+dv = c("F1","F2","F3")
+```
+
+Objective function
+```{r}
+obj = c(1.2, 1.8, 2.2)
+names(obj) = dv
+```
+
+Requirments
+```{r}
+req.depa = c(3,4,8)
+req.depb = c(3,5,6)
+req.depc = c(2,3,9)
+req.df1 = c(1,0,0)
+req.df2 = c(0,1,0)
+req.df3 = c(0,0,1)
+```
+
+* `lp` assumes varables >=0
+
+Constraints
+```{r}
+con.depa = 2000
+con.depb = 2000
+con.depc = 2000
+con.df1 = 400
+con.df2 = 300
+con.df3 = 50
+```
+
+Solve
+```{r}
+lhs = rbindPattern("req\\..+")
+dir = rep_len("<=", dim(lhs)[1])
+rhs = rbindPattern("con\\..+")
+
+model = lpSolve::lp("max", obj, lhs, dir, rhs, all.int = TRUE)
+lppp(model)
+```
+
+* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
+* `lppp(...)` so you can see a pretty print of the `model`
+
+# Book results
+
+Per page 320 "The optimal product mix ... F1 at 400k, F2 at 100K, and F3 at 50k. This product mix creates $700K in variable profits."
+
+This matches our result `$Solution` F1=400,F2=100,F3=50 yealds 770
+
+# LP Formulation (with linked fixed costs)
+
+Descision variables
+
+* F1, F2, F3, LF1, LF2, LF3
+
+Maximize:
+
+* 1.2F1 + 1.8F2 + 2.2F3 - 60LF1 - 200LF2 - 100LF3
+  
+Subject to:
+
+* Department A: 3F1 + 4F2 + 8F3 <= 2000
+* Department B: 3F1 + 5F2 + 6F3 <= 2000
+* Department C: 2F1 + 3F2 + 9F3 <= 2000
+* Demand:
+    * F1 <= 400
+    * F2 <= 300
+    * F3 <= 50
+* Links:
+    * F1 - MLF1 <= 0 
+    * F2 - MLF2 <= 0 
+    * F3 - MLF3 <= 0 
+
+In the "_Links_" section the form is
+
+* x <= M*y
+* x - My <= 0
+
+where
+
+* x is continous profit
+* y is the linked boolean corsponding to cost
+* M is very large. See below at to what M is.
+
+# R translation
+
+Descision variables
+```{r}
+dv = c("F1","F2","F3","LF1","LF2","LF3")
+```
+
+Objective function
+```{r}
+obj = c(1.2, 1.8, 2.2, -60, -200, -100)
+names(obj) = dv
+```
+
+Requirments
+```{r}
+req.depa = c(3,4,8,0,0,0)
+req.depb = c(3,5,6,0,0,0)
+req.depc = c(2,3,9,0,0,0)
+req.df1 = c(1,0,0,0,0,0)
+req.df2 = c(0,1,0,0,0,0)
+req.df3 = c(0,0,1,0,0,0)
+req.lf1 = c(1,0,0,-401,0,0)
+req.lf2 = c(0,1,0,0,-401,0)
+req.lf3 = c(0,0,1,0,0,-401)
+```
+
+* We added 3 linking variables that means we need to add `,0,0,0` to the end of all existing requirments
+* The `-401` comes from M. It was chosen because the max(con.df#) = 400 < 401
+
+Constraints
+```{r}
+con.depa = 2000
+con.depb = 2000
+con.depc = 2000
+con.df1 = 400
+con.df2 = 300
+con.df3 = 50
+con.lf1 = 0
+con.lf2 = 0
+con.lf3 = 0
+```
+
+Solve
+```{r}
+lhs = rbindPattern("req\\..+")
+dir = rep_len("<=", dim(lhs)[1])
+rhs = rbindPattern("con\\..+")
+
+model = lpSolve::lp("max", obj, lhs, dir, rhs, int.vec = c(1,2,3), binary.vec = c(4,5,6))
+lppp(model)
+```
+
+* `int.vec` and `binary.vec` lets solver sort out what the variable types are
+
+# Book results
+
+Per page 322 "The optimal solution ...profit of \$508k. ... F1 up to its ceiling(400) ... F2 at the level of 160K ..."
+
+This matches our result `$Solution` with 0s and binary links removed F1=400,F2=160 yealds 508

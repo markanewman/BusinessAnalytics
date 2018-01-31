@@ -1,10 +1,8 @@
 ---
 title: "11.3.1 Capital Budgeting Problem"
-author: "JMark Newman"
+author: "Mark Newman"
 output:
   html_document: default
-editor_options: 
-  chunk_output_type: console
 ---
 
 # Clear everything
@@ -31,6 +29,8 @@ Maximize:
 Subject to:
 
 * 48p1 + 96p2 + 80p3 + 32p4 + 64p5 <= 160
+
+# R translation
 
 Objective function
 ```{r}

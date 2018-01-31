@@ -34,9 +34,9 @@ Subject to:
 * Assembly: 3c + 5d + 7t <= 2400
 * Shipping: 3c + 2d + 4t <= 1500
 * Demand Potential:
-  * c <= 360
-  * d <= 300
-  * t <= 100
+    * c <= 360
+    * d <= 300
+    * t <= 100
 
 # R translation
 
@@ -66,10 +66,10 @@ req.dpt = c(0,0,1)
 * `lp` assumes all varables are >= 0, so we don't need to add that in too
 * `req.???` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
 * `req.dpc` is demand potential c <= 360
-  * c <= 360 is rewriten as
-  * 1c <=360 is rewriten as
-  * 1c + 0d + 0t <= 360 is rewriten as
-  * `c(1,0,0)`
+    * c <= 360 is rewriten as
+    * 1c <=360 is rewriten as
+    * 1c + 0d + 0t <= 360 is rewriten as
+    * `c(1,0,0)`
 
 Constraints
 ```{r}
