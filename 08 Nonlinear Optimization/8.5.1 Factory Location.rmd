@@ -1,0 +1,132 @@
+---
+title: "8.5.1 Factory Location"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+# Required packages
+```{r message=FALSE, warning=FALSE}
+if (!require('NlcOptim')) install.packages('NlcOptim', quiet=TRUE)
+```
+
+* `lpSolve` is one of the best linear programing packages for R. Use this as a baseline.
+* `NlcOptim` is a popular R package implementing a nonlinear solver.
+
+# Book results
+
+Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
+
+
+# Formulation
+
+Descision variables
+
+* (c)hair, (d)esk, (t)able
+
+Objective function
+
+* Maximize: 15c + 24d + 18t
+  
+Subject to:
+
+* Fabrication: 4c + 6d + 2t <= 1850
+* Assembly: 3c + 5d + 7t <= 2400
+* Shipping: 3c + 2d + 4t <= 1500
+* Demand Potential:
+    * c <= 360
+    * d <= 300
+    * t <= 100
+
+# R translation
+
+Descision variables
+```{r}
+dv = c("c","d","t")
+```
+
+Objective function
+```{r}
+obj = c(15,24,18)
+names(obj) = dv
+```
+
+* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
+
+Requirments
+```{r}
+req.fab = c(4,6,2)
+req.ass = c(3,5,7)
+req.shp = c(3,2,4)
+req.dpc = c(1,0,0)
+req.dpd = c(0,1,0)
+req.dpt = c(0,0,1)
+
+lhs = rbindPattern("req\\..+")
+rm(req.fab, req.ass, req.shp, req.dpc, req.dpd, req.dpt)
+```
+
+* `lp` assumes all varables are >= 0, so we don't need to add that in too
+* `req.???` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
+* `req.dpc` is demand potential c <= 360
+    * c <= 360 is rewriten as
+    * 1c <=360 is rewriten as
+    * 1c + 0d + 0t <= 360 is rewriten as
+    * `c(1,0,0)`
+* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
+
+Constraints
+```{r}
+con.fab = 1850
+con.ass = 2400
+con.shp = 1500
+con.dpc = 360
+con.dpd = 300
+con.dpt = 100
+
+rhs = rbindPattern("con\\..+")
+rm(con.fab, con.ass, con.shp, con.dpc, con.dpd, con.dpt)
+```
+
+Solve using `lpSolve`
+```{r}
+dir = rep_len("<=", dim(lhs)[1])
+
+model = lpSolve::lp ("max", obj, lhs, dir, rhs)
+model$objval
+model$solution
+```
+
+* `model$objval` is the value of the __Objective Function__
+* `model$solution` are the values of the __Descision Variables__
+* This matches the book result of c=0,d=275,t=100 yealds 8400
+
+Solve using `NlcOptim`
+```{r}
+startingpos = c(0,0,0)
+objfun=function(x) {
+  result = 15*x[1] + 24*x[2] + 18*x[3]
+  return(-1*result)
+}
+
+lhs = rbind(lhs, nonzeroRequirment(dv))
+rhs = rbind(rhs, nonzeroConstraint(dv))
+
+model = NlcOptim::solnl(startingpos, objfun, A = lhs, B = rhs, maxIter = 4000)
+-1*model$fn
+as.vector(t(model$par))
+```
+
+* Technicaly `NlcOptim` only does minimum. To fix that make sure you `return(-1*result)`
+* `lp` by default makes all the variables non-zero by default. `solnl` does not assume that, so we need to add in `nonzeroRequirment(...)` and `nonzeroConstraint(...)`
+* `-1*model$fn` is the value of the __Objective Function__. It is the negitive because we fliped the result as above to get the "Maximum"
+* `as.vector(t(model$par))` are the values of the __Descision Variables__
+* This matches the book result of c=0,d=275,t=100 yealds 8400
