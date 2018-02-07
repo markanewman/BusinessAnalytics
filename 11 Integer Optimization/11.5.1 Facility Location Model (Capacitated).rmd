@@ -16,7 +16,6 @@ options(scipen = 999)
 # Required packages
 ```{r message=FALSE, warning=FALSE}
 if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
-# source("../Helper Scripts/rbindPattern.r")
 source("../Helper Scripts/lpPrettyPrint.r")
 source("../Helper Scripts/transportation.r")
 ```
@@ -32,7 +31,7 @@ From | Capacity | Cost
 (De)nver | 10 | 100
 (H)ouston | 10 | 110
 (P)hoenix | 12 | 125
-(S)an (A)ntonio | 10 | 120
+(S)an (A)ntonio | 12 | 120
 
 ## To
 
@@ -86,7 +85,7 @@ Subject to:
 
 Tables
 ```{r}
-from = data.frame(matrix(c("A",16,140,"Da",20,150,"De",10,100,"H",10,110,"P",12,125,"SA",10,120), nrow = 6, ncol=3, byrow=TRUE), stringsAsFactors = FALSE)
+from = data.frame(matrix(c("A",16,140,"Da",20,150,"De",10,100,"H",10,110,"P",12,125,"SA",12,120), nrow = 6, ncol=3, byrow=TRUE), stringsAsFactors = FALSE)
 colnames(from) = c("From", "Capacity", "Cost")
 from$Capacity = as.numeric(from$Capacity)
 from$Cost = as.numeric(from$Cost)
@@ -130,15 +129,15 @@ Requirments
 lenf = length(from$Capacity)
 lent = length(to$Demand)
 
-req.Capacity = CapacityRequirments(lenf, lent)
-req.Demand =  DemandRequirments(lenf, lent)
-req.Link = LinkRequirments("from", lenf, lent, sum(to$Demand)+1)
+req.capacity = CapacityRequirments(lenf, lent)
+req.demand =  DemandRequirments(lenf, lent)
+req.link = LinkRequirments("from", lenf, lent, sum(to$Demand)+1)
 
-req.Capacity = cbind(matrix(0, nrow = lenf, ncol = lenf), req.Capacity)
-req.Demand = cbind(matrix(0, nrow = lenf, ncol = lenf), req.Demand)
+req.capacity = cbind(matrix(0, nrow = lenf, ncol = lenf), req.capacity)
+req.demand = cbind(matrix(0, nrow = lent, ncol = lenf), req.demand)
 
-req = rbind(req.Capacity, req.Demand, req.Link)
-rm(lenf, lent, req.Capacity, req.Demand, req.Link)
+req = rbind(req.capacity, req.demand, req.link)
+rm(lenf, lent, req.capacity, req.demand, req.link)
 length(dv) == dim(req)[2]
 ```
 
@@ -159,31 +158,51 @@ length(dv) == dim(req)[2]
 
 Constraints
 ```{r}
-con.Capacity = from$Capacity
-con.Demand = to$Demand
+con.capacity = from$Capacity
+con.demand = to$Demand
 con.link = rep_len(0, length(from$Capacity))
-con = c(con.Capacity, con.Demand, con.link)
+con = c(con.capacity, con.demand, con.link)
 
-rm(con.Capacity, con.Demand, con.link)
+rm(con.capacity, con.demand, con.link)
+length(con) == dim(req)[1]
 ```
 
 * `con.link` is always 0. We just need to put in enough of them 
 
 Solve
 ```{r}
-lhs = rbindPattern("req\\..+")
-dir = rep_len("<=", dim(lhs)[1])
-rhs = rbindPattern("con\\..+")
+lenf = length(from$Capacity)
+lent = length(to$Demand)
 
-model = lpSolve::lp("max", obj, lhs, dir, rhs, all.int = TRUE)
+dir.capacity = rep_len("<=", lenf)
+dir.demand = rep_len(">=", lent)
+dir.link = rep_len("<=", lenf)
+dir = c(dir.capacity, dir.demand, dir.link)
+
+model = lpSolve::lp("min", obj, req, dir, con, binary.vec=1:lenf)
 lppp(model)
+rm(dir.capacity, dir.demand, dir.link)
 ```
 
-* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
 * `lppp(...)` so you can see a pretty print of the `model`
 
 # Book results
 
-Per page 320 "The optimal product mix ... F1 at 400k, F2 at 100K, and F3 at 50k. This product mix creates $700K in variable profits."
+Per page 327 "... shown in Figure11.21, which achieves a minimum total cost of $884,550."
 
-This matches our result `$Solution` F1=400,F2=100,F3=50 yealds 770
+* Links: Da,De,H,P
+* Da: Da=6800,0=3500,SA=7000,W=2700
+* De: A=1700,B=2500,De=4000,SLC=1800
+* H: H=9600,SA=400
+* P: A=1500,P=5000
+
+This matches our result `$Solution` when scaled by 1k
+
+* lnk-A=0,lnk-Da=1,lnk-De=1,lnk-H=1,lnk-P=1,lnk-SA=0,AA=0,AB=0,ADa=0,ADe=0,AH=0,AO=0,AP=0,ASLC=0,ASA=0,AW=0,DaA=0,DaB=0,DaDa=6.8,DaDe=0,DaH=0,DaO=3.5,DaP=0,DaSLC=0,DaSA=7,DaW=2.7,DeA=1.7,DeB=2.5,DeDa=0,DeDe=4,DeH=0,DeO=0,DeP=0,DeSLC=1.8,DeSA=0,DeW=0,HA=0,HB=0,HDa=0,HDe=0,HH=9.6,HO=0,HP=0,HSLC=0,HSA=0.400000000000001,HW=0,PA=1.5,PB=0,PDa=0,PDe=0,PH=0,PO=0,PP=5,PSLC=0,PSA=0,PW=0,SAA=0,SAB=0,SADa=0,SADe=0,SAH=0,SAO=0,SAP=0,SASLC=0,SASA=0,SAW=0 yealds 884.55
+* lnk-Da=1,lnk-De=1,lnk-H=1,lnk-P=1,DaDa=6.8,DaO=3.5,DaSA=7,DaW=2.7,DeA=1.7,DeB=2.5,DeDe=4,DeSLC=1.8,HH=9.6,HSA=0.4,PA=1.5,PP=5yealds 884.55
+    * links: Da,De,H,P
+    * Da: Da=6.8,O=3.5,SA=7,W=2.7
+    * De: A=1.7,B=2.5,De=4,SLC=1.8
+    * H: H=9.6,SA=0.4
+    * P: A=1.5,P=5
+
