@@ -3,8 +3,6 @@ title: "8.5.1 Factory Location"
 author: "Mark Newman"
 output:
   html_document: default
-editor_options: 
-  chunk_output_type: console
 ---
 
 # Clear everything
@@ -18,115 +16,120 @@ options(scipen = 999)
 if (!require('NlcOptim')) install.packages('NlcOptim', quiet=TRUE)
 ```
 
-* `lpSolve` is one of the best linear programing packages for R. Use this as a baseline.
 * `NlcOptim` is a popular R package implementing a nonlinear solver.
-
-# Book results
-
-Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
-
 
 # Formulation
 
 Descision variables
 
-* (c)hair, (d)esk, (t)able
+* location (x,y)
 
 Objective function
 
-* Maximize: 15c + 24d + 18t
+* Minimize: sum(sqrt((x - x1)^2 + (y - y1)^2))
   
 Subject to:
 
-* Fabrication: 4c + 6d + 2t <= 1850
-* Assembly: 3c + 5d + 7t <= 2400
-* Shipping: 3c + 2d + 4t <= 1500
-* Demand Potential:
-    * c <= 360
-    * d <= 300
-    * t <= 100
+* None
+
+# Tables
+Site | x | y
+:--:|:--:|:--:
+ 1 |   5 | 41
+ 2 |  20 | 10
+ 3 |  44 | 48
+ 4 |  60 | 58
+ 5 | 100 |  4
+ 6 | 138 | 80
+ 7 | 150 | 40
+ 8 | 170 | 18
+ 9 | 182 |  2
+10 | 190 | 56
+
 
 # R translation
 
-Descision variables
+Tables
 ```{r}
-dv = c("c","d","t")
+sites = matrix(c(1,5,41,2,20,10,3,44,48,4,60,58,5,100,4,6,138,80,7,150,40,8,170,18,9,182,2,10,190,56), nrow = 10, ncol = 3, byrow = TRUE)
+colnames(sites) = c("Site", "X", "Y")
 ```
 
 Objective function
 ```{r}
-obj = c(15,24,18)
-names(obj) = dv
-```
-
-* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
-
-Requirments
-```{r}
-req.fab = c(4,6,2)
-req.ass = c(3,5,7)
-req.shp = c(3,2,4)
-req.dpc = c(1,0,0)
-req.dpd = c(0,1,0)
-req.dpt = c(0,0,1)
-
-lhs = rbindPattern("req\\..+")
-rm(req.fab, req.ass, req.shp, req.dpc, req.dpd, req.dpt)
-```
-
-* `lp` assumes all varables are >= 0, so we don't need to add that in too
-* `req.???` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
-* `req.dpc` is demand potential c <= 360
-    * c <= 360 is rewriten as
-    * 1c <=360 is rewriten as
-    * 1c + 0d + 0t <= 360 is rewriten as
-    * `c(1,0,0)`
-* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
-
-Constraints
-```{r}
-con.fab = 1850
-con.ass = 2400
-con.shp = 1500
-con.dpc = 360
-con.dpd = 300
-con.dpt = 100
-
-rhs = rbindPattern("con\\..+")
-rm(con.fab, con.ass, con.shp, con.dpc, con.dpd, con.dpt)
-```
-
-Solve using `lpSolve`
-```{r}
-dir = rep_len("<=", dim(lhs)[1])
-
-model = lpSolve::lp ("max", obj, lhs, dir, rhs)
-model$objval
-model$solution
-```
-
-* `model$objval` is the value of the __Objective Function__
-* `model$solution` are the values of the __Descision Variables__
-* This matches the book result of c=0,d=275,t=100 yealds 8400
-
-Solve using `NlcOptim`
-```{r}
-startingpos = c(0,0,0)
-objfun=function(x) {
-  result = 15*x[1] + 24*x[2] + 18*x[3]
-  return(-1*result)
+objfun = function(x) {
+  
+  print(as.vector(x))
+  
+  s = 0
+  t = sites[,2:3]
+  len = dim(t)[1]
+  
+  for(i in 1:len) {
+    s = s + sqrt((t[i,1] - x[1])^2 + (t[i,2] - x[2])^2)
+  }
+  
+  return(s)
 }
-
-lhs = rbind(lhs, nonzeroRequirment(dv))
-rhs = rbind(rhs, nonzeroConstraint(dv))
-
-model = NlcOptim::solnl(startingpos, objfun, A = lhs, B = rhs, maxIter = 4000)
--1*model$fn
-as.vector(t(model$par))
+abs(objfun(c(0,0)) - 1178.106) <= .001
 ```
 
-* Technicaly `NlcOptim` only does minimum. To fix that make sure you `return(-1*result)`
-* `lp` by default makes all the variables non-zero by default. `solnl` does not assume that, so we need to add in `nonzeroRequirment(...)` and `nonzeroConstraint(...)`
-* `-1*model$fn` is the value of the __Objective Function__. It is the negitive because we fliped the result as above to get the "Maximum"
-* `as.vector(t(model$par))` are the values of the __Descision Variables__
-* This matches the book result of c=0,d=275,t=100 yealds 8400
+* R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sites`, but it is still available for us to do things with.
+* The only reason `print(as.vector(x))` is in the function is so we can see the path we took to solve.
+* **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+    * `abs(...) <= .001` means we are the same rounded to 3 decimal places (Excel default)
+    * `1178.106` comes from Excel
+
+Linear Requirments / Constraints
+```{r}
+# This space left blank
+```
+
+* Requirments and Constraints are only added for linear equations. They are written in matrix form.
+
+Nonlinear Requirments
+```{r}
+confun = function(x) { return(list(ceq = 0, c = 0)) }
+```
+
+* If you don't have any linear requirments, you **MUST** have a nonlinear requirment. `return(list(ceq = 0, c = 0))` is the No-Op constraint.
+* ceq is for when you rewrite the nonlinear formula as xxx = 0.
+* c is for when you can rewrite the nonlinear formula as xxx <= 0.
+* You **MUST** rewrite the formulas like this. There is no option for left hand side / right hand side like in Linear Requirments.
+
+Solve
+```{r}
+startingpos = c(0,0)
+
+model1 = NlcOptim::solnl(startingpos, objfun=objfun, confun=confun, maxIter = 4000)
+model1$fn
+as.vector(t(model1$par))
+```
+
+* Starting at "0" is usualy a good idea to see what happens
+
+Solve (better start)
+```{r}
+startingpos = c(mean(sites[,2]), mean(sites[,3]))
+
+model2 = NlcOptim::solnl(startingpos, objfun=objfun, confun=confun, maxIter = 4000)
+model2$fn
+as.vector(t(model2$par))
+```
+
+* A "better" guess for `startingpos` is _somewhere_ inside the bounds.
+    * We are doing `solnl(...)` 2 times juat as a sanity check.
+* `model2$fn` is the value of the __Objective Function__.
+* `as.vector(t(model2$par))` are the values of the __Descision Variables__
+
+Compare results
+```{r}
+abs(model1$fn - model2$fn) <= .0001
+abs(t(model1$par) - t(model2$par)) <= .0001
+```
+
+* x=114.0707, y=35.1722 yealds 670.638 is super close to the book result. and is identical if rounded to 1 decimal place.
+
+# Book results
+
+Per page 219 "The optimal solution ... is the location (114.1, 35.2) ... of approximately 670.6"
