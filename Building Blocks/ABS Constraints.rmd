@@ -1,0 +1,130 @@
+---
+title: "Abslute Value Constraints"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# LP Formulation
+
+Descision variables
+
+* $X = x_{1}$
+
+Objective function
+
+* Maximize: $\lvert x-1 \rvert$
+  
+Subject to:
+
+* Constraint 1: $x_{1} <= 3$
+* Bounds: $\infty <= x_{i} <= \infty$
+
+---------
+
+When $\lvert x+n \rvert$ shows up in the objective function, convert it as follows:
+
+* $\lvert x+n \rvert$
+* $v >= x+n$
+* $v >= -x-n$
+
+Therefore, rewrite the LP Formulation
+
+---------
+
+# LP Formulation (rewriten)
+
+Descision variables
+
+* $X = x_{1}, v1_{1}$
+
+Objective function
+
+* Maximize: $v_{i}$
+    * $0x_{1} + v_{1}$
+  
+Subject to:
+
+* Constraint 1: $x_{1} <= 3$
+    * $x_{1} + 0v_{1} <= 3$
+* ABS 1a: $v_{1} >= x_{1}+1$
+    * $0 >= x_{1} + 1 + -v_{1}$
+    * $x_{1} + 1 + -v_{1} <= 0$
+    * $x_{1} + -v_{1} <= -1$
+* ABS 1b: $v_{1} >= -x_{1}-1$
+    * $0 >= -x_{1} - 1 + -v_{1}$
+    * -x_{1} - 1 + -v_{1} <= 0$
+    * -x_{1} + -v_{1} <= 1$
+* Bounds: $\infty <= x_{i}, v_{i} <= \infty$
+
+# R translation
+
+Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+Required packages
+```{r}
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
+```
+
+Create model
+```{r}
+lpm = make.lp(ncol = 2, nrow = 0)
+```
+
+Name descision variables
+```{r}
+dimnames(lpm)[[2]] = c("x1", "v1")
+```
+
+Add objective function
+```{r}
+set.objfn(lpm, c(0, 1))
+xxx = lp.control(lpm, sense = "max")
+```
+
+* `xxx` is there to suppress the output
+
+Add in all constraints
+```{r}
+add.constraint(lpm, c(1, 0), "<=", 3)
+add.constraint(lpm, c(1, -1), "<=", -1)
+add.constraint(lpm, c(-1, -1), "<=", 1)
+dimnames(lpm)[[1]] = c("Constraint 1", "ABS 1a", "ABS 1b" )
+```
+
+* ABS 1a: $v_{1} >= x_{1}+1$
+    * $0 >= x_{1} + 1 + -v_{1}$
+    * $x_{1} + 1 + -v_{1} <= 0$
+    * $x_{1} + -v_{1} <= -1$
+* ABS 1b: $v_{1} >= -x_{1}-1$
+    * $0 >= -x_{1} - 1 + -v_{1}$
+    * -x_{1} - 1 + -v_{1} <= 0$
+    * -x_{1} + -v_{1} <= 1$
+* Bounds: $\infty <= x_{i}, v_{i} <= \infty$
+
+Solve
+```{r results="hold"}
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+
+print.lpExtPtr(lpm)
+```
+
+* `res == 0` is the status code for _optimal solution found_
+* `get.objective(...)` gets the value of the _objective function_
+* `get.variables(...)` gets the value of the _descision variables_
+
+Cleanup
+```{r}
+delete.lp(lpm)
+```
+

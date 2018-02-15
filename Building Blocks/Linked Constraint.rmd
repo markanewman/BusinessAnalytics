@@ -1,0 +1,112 @@
+---
+title: "Linked Constraints"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# LP Formulation
+
+Notes on **conventions**
+
+* When talking about descision variables and constraints, it is convention to list out the real variable ($x_{i}$) then linking variable ($y_{i}$)
+* When talking about costs and the objective function, it is convention to list out fixed costs ($f_{i}$) then variable costs ($c_{i}$)
+
+What this means is that you need to be careful to flip one or the other when translating it to R. As seen below, I prefer to flip the objective function and put all my $x_{i}$s up front.
+
+
+Descision variables
+
+* $X = x_{1}, y_{1}$
+
+Costs
+
+* $F = [-50]$
+* $C = [2]$
+
+Objective function
+
+* Maximize: Fixed costs + Variable costs
+    * Fixed costs: $\sum_{i=1}^{n} f_{i}y_{i}$
+        * $-50y_{1}$
+    * Variable costs: $\sum_{i=1}^{n} c_{i}x_{i}$
+        * $2x_{1}$
+    * $-50y_{1} + 2x_{1}$
+    * $2x_{1} + -50y_{1}$
+  
+Subject to:
+
+* Constraint 1: $3x_{1} <= 200$
+    * $3x_{1} + 0y_{1} <= 200$
+* Links: $x_{i} <= My_{i}$
+    * $x_{i} + -My_{i} <= 0$
+    * $x_{1} + -My_{1} <= 0$
+        * M needs to be larger than any posible $x_{i}$ so choose the bigest constraint + 1.
+    * $x_{1} + -201y_{1} <= 0$
+* Binary: $y_{i}$
+* Bounds: $0 <= x_{i} <= \infty$
+
+# R translation
+
+Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+Required packages
+```{r}
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
+```
+
+Create model
+```{r}
+lpm = make.lp(ncol = 2, nrow = 0)
+```
+
+Name descision variables
+```{r}
+dimnames(lpm)[[2]] = c("x1", "y1")
+```
+
+Add objective function
+```{r}
+set.objfn(lpm, c(2, -50))
+xxx = lp.control(lpm, sense = "max")
+```
+
+* `xxx` is there to suppress the output
+
+Add in all constraints
+```{r}
+add.constraint(lpm, c(3, 0), "<=", 200)
+add.constraint(lpm, c(1, -201), "<=", 0)
+set.type(lpm, c(2), "binary")
+set.bounds(lpm, lower = c(0,0))
+dimnames(lpm)[[1]] = c("Constraint 1", "Link x1")
+```
+
+* `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
+
+Solve
+```{r results="hold"}
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+
+print.lpExtPtr(lpm)
+```
+
+* `res == 0` is the status code for _optimal solution found_
+* `get.objective(...)` gets the value of the _objective function_
+* `get.variables(...)` gets the value of the _descision variables_
+
+Cleanup
+```{r}
+delete.lp(lpm)
+```
+

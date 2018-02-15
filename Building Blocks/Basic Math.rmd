@@ -1,0 +1,17 @@
+---
+title: "Basic Math"
+author: "Mark Newman"
+output:
+  html_document: default
+---
+
+This file contains no R. It is just a quick reminder as to how to format things in the "correct" LP form.
+
+# Descision variables
+
+
+# Objective function
+
+
+  
+# Subject to
