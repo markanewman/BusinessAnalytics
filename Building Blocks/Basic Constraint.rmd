@@ -22,10 +22,10 @@ Objective function
 * Maximize: $\sum_{i=1}^{n} c_{i}x_{i}$
     * $2x_{1}$
   
-Subject to:
+Subject to
 
 * Constraint 1: $3x_{1} <= 9$
-* Bounds: $0 <= x_{i} <= \infty$
+* Bounds: $0 <= x_{i} <= \infty \forall i$
 
 # R translation
 

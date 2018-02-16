@@ -15,20 +15,35 @@ Descision variables
 
 Objective function
 
-* Maximize: $\lvert x-1 \rvert$
+* Maximize: $\lvert x_{1}-1 \rvert$
   
-Subject to:
+Subject to
 
-* Constraint 1: $x_{1} <= 3$
-* Bounds: $\infty <= x_{i} <= \infty$
+* Constraint 1: $\lvert 3x_{1} \rvert <= 9$
+* Bounds: $\infty <= x_{i} <= \infty \forall i$
 
 ---------
 
-When $\lvert x+n \rvert$ shows up in the objective function, convert it as follows:
+When $\lvert ax+n \rvert$ shows up in the objective function, convert it as follows:
 
-* $\lvert x+n \rvert$
-* $v >= x+n$
-* $v >= -x-n$
+Objective function
+
+* $v = \lvert ax+n \rvert$
+
+Subject to
+
+* $ax-v <= -n$
+* $-ax-v <= n$
+* Bounds: $\0 <= v <= \infty$
+
+When $\lvert ax+n \rvert <= c$ shows up a constraint, convert it as follows:
+
+Subject to
+
+* $ax-v <= -n$
+* $-ax-v <= n$
+* $v <= c$
+* Bounds: $\0 <= v <= \infty$
 
 Therefore, rewrite the LP Formulation
 
@@ -38,26 +53,30 @@ Therefore, rewrite the LP Formulation
 
 Descision variables
 
-* $X = x_{1}, v1_{1}$
+* $X = x_{1}, v_{1}, v_{2}$
 
 Objective function
 
-* Maximize: $v_{i}$
-    * $0x_{1} + v_{1}$
+* Maximize: $v_{1}$
+    * $0x_{1} + v_{1} + 0v_{2}$
   
-Subject to:
+Subject to
 
-* Constraint 1: $x_{1} <= 3$
-    * $x_{1} + 0v_{1} <= 3$
-* ABS 1a: $v_{1} >= x_{1}+1$
-    * $0 >= x_{1} + 1 + -v_{1}$
-    * $x_{1} + 1 + -v_{1} <= 0$
-    * $x_{1} + -v_{1} <= -1$
-* ABS 1b: $v_{1} >= -x_{1}-1$
-    * $0 >= -x_{1} - 1 + -v_{1}$
-    * -x_{1} - 1 + -v_{1} <= 0$
-    * -x_{1} + -v_{1} <= 1$
-* Bounds: $\infty <= x_{i}, v_{i} <= \infty$
+* Objective function: $v_{1} = \lvert x_{1}-1 \rvert$
+    * $x_{1}-v_{1} <= 1$
+        * $x_{1} - v_{1} + 0v_{2} <= 1$
+    * $-x_{1}-v_{1} <= -1$
+        * $-x_{1} - v_{1} + 0v_{2} <= -1$
+    * Bounds: $\0 <= v_{1} <= \infty$
+* Constraint 1: $\lvert 3x_{1} \rvert <= 9$
+    * $3x_{1}-v_{2} <= 0$
+        * $3x_{1} + 0v_{1} - v_{2} <= 0$
+    * $-3x_{1}-v_{2} <= 0$
+        * $-3x_{1} + 0v_{1} - v_{2} <= 0$
+    * $v_{2} <= 9$
+        * $0x_{1} + 0v_{1} + v_{2} <= 9$
+    * Bounds: $\0 <= v_{2} <= \infty$
+* Bounds: $\infty <= x_{i} <= \infty$
 
 # R translation
 
@@ -85,7 +104,7 @@ dimnames(lpm)[[2]] = c("x1", "v1")
 
 Add objective function
 ```{r}
-set.objfn(lpm, c(0, 1))
+set.objfn(lpm, c(1, 0))
 xxx = lp.control(lpm, sense = "max")
 ```
 
@@ -93,21 +112,86 @@ xxx = lp.control(lpm, sense = "max")
 
 Add in all constraints
 ```{r}
-add.constraint(lpm, c(1, 0), "<=", 3)
-add.constraint(lpm, c(1, -1), "<=", -1)
-add.constraint(lpm, c(-1, -1), "<=", 1)
-dimnames(lpm)[[1]] = c("Constraint 1", "ABS 1a", "ABS 1b" )
+add.constraint(lpm, c(1,-1), "<=", 0)
+add.constraint(lpm, c(-1,-1), "<=", 0)
+add.constraint(lpm, c(0,1), "<=", 10)
+add.constraint(lpm, c(1,0), "<=", 6)
+set.bounds(lpm, lower = c(-50, 0), upper = c(50, 100))
+#dimnames(lpm)[[1]] = c("obj 1a", "obj 1b")
 ```
 
-* ABS 1a: $v_{1} >= x_{1}+1$
-    * $0 >= x_{1} + 1 + -v_{1}$
-    * $x_{1} + 1 + -v_{1} <= 0$
-    * $x_{1} + -v_{1} <= -1$
-* ABS 1b: $v_{1} >= -x_{1}-1$
-    * $0 >= -x_{1} - 1 + -v_{1}$
-    * -x_{1} - 1 + -v_{1} <= 0$
-    * -x_{1} + -v_{1} <= 1$
-* Bounds: $\infty <= x_{i}, v_{i} <= \infty$
+max: |x-1|
+st:
+|x+2| <= 3
+
+-->
+
+http://cc.bingj.com/cache.aspx?q=lpsolveapi+absolute+value+objective+function&d=4801208246665729&mkt=en-US&setlang=en-US&w=ILTEw-NjHIeHVgwHCrI9_xR0_X1rHFsa
+
+in the case of: max: +|ax+n| or min -|ax+n|
+
+Obj
+  |ax+n| => v
+
+-ax +  v + -Ml <= n
+ ax +  v +  Ml <= M-n
+ ax + -v +  0l <= -n
+-ax + -v +  0l <= n
+
+for constraints
+
+|ax+n| <= c
+
+replaced with
+
+ ax + -1x' <= -n
+-ax + -1x' <= n
+ 0x +  1x' <= c
+
+-->
+
+max: v
+st:
+-1x +  0x' +  1v + -Ml <= -1
+ 1x +  0x' +  1v +  Ml <= M+1
+ 1x +  0x' + -1v +  0l <= 1
+-1x +  0x' + -1v +  0l <= -1
+ 1x + -1x' +  0v +  0l <= -2
+-1x + -1x' +  0v +  0l <= 2
+ 0x +  1x' +  0v +  0l <= 3
+
+--> 
+
+```{r}
+rm(list = ls())
+options(scipen = 999)
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
+lpm = make.lp(ncol = 4, nrow = 0)
+dimnames(lpm)[[2]] = c("x", "x'", "v", "l")
+set.objfn(lpm, c(0,0,1,0))
+xxx = lp.control(lpm, sense = "max")
+M = 100
+
+add.constraint(lpm, c(-1, 0, 1,-M), "<=",  -1)
+add.constraint(lpm, c( 1, 0, 1, M), "<=",  M+1)
+add.constraint(lpm, c( 1, 0,-1, 0), "<=",  1)
+add.constraint(lpm, c(-1, 0,-1, 0), "<=",  -1)
+add.constraint(lpm, c( 1,-1, 0, 0), "<=",  -2)
+add.constraint(lpm, c(-1,-1, 0, 0), "<=",  2)
+add.constraint(lpm, c( 0, 1, 0, 0), "<=",  3)
+
+set.type(lpm, c(4), "binary")
+set.bounds(lpm, lower = c(-Inf,0,0,0))
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+print.lpExtPtr(lpm)
+delete.lp(lpm)
+```
+
+
 
 Solve
 ```{r results="hold"}

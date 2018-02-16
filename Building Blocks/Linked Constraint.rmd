@@ -36,7 +36,7 @@ Objective function
     * $-50y_{1} + 2x_{1}$
     * $2x_{1} + -50y_{1}$
   
-Subject to:
+Subject to
 
 * Constraint 1: $3x_{1} <= 200$
     * $3x_{1} + 0y_{1} <= 200$
@@ -46,7 +46,7 @@ Subject to:
         * M needs to be larger than any posible $x_{i}$ so choose the bigest constraint + 1.
     * $x_{1} + -201y_{1} <= 0$
 * Binary: $y_{i}$
-* Bounds: $0 <= x_{i} <= \infty$
+* Bounds: $0 <= x_{i} <= \infty \forall i$
 
 # R translation
 
