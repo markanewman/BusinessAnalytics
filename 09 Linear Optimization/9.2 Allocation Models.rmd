@@ -3,105 +3,99 @@ title: "9.2 Allocation Models"
 author: "Mark Newman"
 output:
   html_document: default
+editor_options: 
+  chunk_output_type: console
 ---
-
-# Clear everything
-```{r}
-rm(list = ls())
-options(scipen = 999)
-```
-
-# Required packages
-```{r message=FALSE, warning=FALSE}
-if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
-source("../Helper Scripts/rbindPattern.r")
-source("../Helper Scripts/lpPrettyPrint.r")
-```
 
 # LP Formulation
 
 Descision variables
 
+$X = x_{c}, x_{d}, x_{t}$
+
 * (c)hair, (d)esk, (t)able
 
 Objective function
 
-* Maximize: 15c + 24d + 18t
+* Maximize: $15x_{c} + 24x_{d} + 18x_{t}$
   
-Subject to:
+Subject to
 
-* Fabrication: 4c + 6d + 2t <= 1850
-* Assembly: 3c + 5d + 7t <= 2400
-* Shipping: 3c + 2d + 4t <= 1500
+* Fabrication: $4x_{c} + 6x_{d} + 2x_{t} <= 1850$
+* Assembly: $3x_{c} + 5x_{d} + 7x_{t} <= 2400$
+* Shipping: $3x_{c} + 2x_{d} + 4x_{t} <= 1500$
 * Demand Potential:
-    * c <= 360
-    * d <= 300
-    * t <= 100
+    * $x_{c} <= 360$
+    * $x_{d} <= 300$
+    * $x_{t} <= 100$
 
 # R translation
 
-Descision variables
+Clear everything
 ```{r}
-dv = c("c","d","t")
+rm(list = ls())
+options(scipen = 999)
 ```
 
-Objective function
+Required packages
 ```{r}
-obj = c(15,24,18)
-names(obj) = dv
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
 ```
 
-* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
-
-Requirments
+Create model
 ```{r}
-req.fab = c(4,6,2)
-req.ass = c(3,5,7)
-req.shp = c(3,2,4)
-req.dpc = c(1,0,0)
-req.dpd = c(0,1,0)
-req.dpt = c(0,0,1)
+lpm = make.lp(ncol = 3, nrow = 0)
 ```
 
-* `lp` assumes all varables are >= 0, so we don't need to add that in too
-* `req.???` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
-* `req.dpc` is demand potential c <= 360
-    * c <= 360 is rewriten as
-    * 1c <=360 is rewriten as
-    * 1c + 0d + 0t <= 360 is rewriten as
-    * `c(1,0,0)`
-
-Constraints
+Name descision variables
 ```{r}
-con.fab = 1850
-con.ass = 2400
-con.shp = 1500
-con.dpc = 360
-con.dpd = 300
-con.dpt = 100
+dimnames(lpm)[[2]] = c("xc","xd","xt")
 ```
 
-Solve (general LP)
+Add objective function
 ```{r}
-lhs = rbindPattern("req\\..+")
-dir = rep_len("<=", dim(lhs)[1])
-rhs = rbindPattern("con\\..+")
-
-model = lpSolve::lp ("max", obj, lhs, dir, rhs)
-model$objval
-model$solution
-
-lppp(model)
+set.objfn(lpm, c(15,24,18))
+xxx = lp.control(lpm, sense = "max")
 ```
 
-* The regular expression `req\\..+` matches anything that starts with "req." and has at least one other character on the end
-* `model$objval` is the value of the __Objective Function__
-* `model$solution` are the values of the __Descision Variables__
-* `lppp(...)` so you can see a pretty print of the `model`
+* `xxx` is there to suppress the output
+
+Add in all constraints
+```{r}
+add.constraint(lpm, c(4,6,2), "<=", 1850)
+add.constraint(lpm, c(3,5,7), "<=", 2400)
+add.constraint(lpm, c(3,2,4), "<=", 1500)
+set.bounds(lpm, lower = c(0,0,0), upper = c(360,300,100))
+dimnames(lpm)[[1]] = c("Fabrication", "Assembly", "Shipping")
+```
+
+* `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
+* Demand Potential _can_ be implemented as a constraint ($x_{c} <= 360$). However, it is _better_ to implement it as a bound.
+
+
+Solve
+```{r}
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+
+print.lpExtPtr(lpm)
+```
+
+* `res == 0` is the status code for _optimal solution found_
+* `get.objective(...)` gets the value of the _objective function_
+* `get.variables(...)` gets the value of the _descision variables_
+
+Cleanup
+```{r}
+delete.lp(lpm)
+```
 
 # Book results
 
 Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
 
-This matches our result `$Solution` c=0,d=275,t=100 yealds 8400
+This matches our result `get.variables(...)` [0,275,100] yealds `get.objective(...)` 8400
 
