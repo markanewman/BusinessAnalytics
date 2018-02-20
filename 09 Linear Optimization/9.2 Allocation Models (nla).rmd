@@ -39,7 +39,7 @@ Subject to
 # R translation (linear)
 
 Clear everything
-```{r}
+```{r results="hold"}
 rm(list = ls())
 options(scipen = 999)
 if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
@@ -63,7 +63,10 @@ delete.lp(lpm)
 
 * `res == 0` is the status code for _optimal solution found_
 * `get.objective(...)` gets the value of the _objective function_
+    * $8,400
 * `get.variables(...)` gets the value of the _descision variables_
+    * chairs = 0, desks = 275, tables = 100
+* The result matched the book
 
 # R translation (non-linear)
 
@@ -83,58 +86,58 @@ Add objective function
 ```{r}
 eval_f = function(x) {
   
-    objective = -1(15*x[1] + 24*x[2] + 18*x[3])
-    gradient = c(
-      -15,
-      -24,
-      -18
-    )
-    
-    #return(list(objective = objective, gradient = gradient))
-    return(objective)
+    objective = -1*(15*x[1] + 24*x[2] + 18*x[3])
+
+    return (objective)
 }
 ```
 
 * `nloptr` only solves for the minimum. So to maxmize $f(x)$ we just minimize $-f(x)$
-* Always calculate the gradent if you can, if not dont worry because a gradent free algorithm (`algorithm="NLOPT_LN_COBYLA"`) is selected
-* Gradient is the deritive of the equation with respect to each variable. I.E 3 variables means 3 results.
-    * Gradient is also optional.
-    * $\frac{\partial}{\partial x_{c}} (15*x_{c} + 24*x_{d} + 18*x_{t}) = 15$
-    * $\frac{\partial}{\partial x_{d}} (15*x_{c} + 24*x_{d} + 18*x_{t}) = 24$
-    * $\frac{\partial}{\partial x_{t}} (15*x_{c} + 24*x_{d} + 18*x_{t}) = 18$
 
 Add in all constraints
 ```{r}
 eval_g_ineq = function(x) {
   
-  conatraint = c(
+  objective = c(
     4*x[1] + 6*x[2] + 2*x[3] - 1850,
     3*x[1] + 5*x[2] + 7*x[3] - 2400,
     3*x[1] + 2*x[2] + 4*x[3] - 1500
   )
-  
-  return (conatraint)
+
+  return (objective)
 }
 
 lb = c(0,0,0)
 ub = c(360,300,100)
 ```
 
-* `nloptr` only allows a function to evaluate the parameters. `eval_g_ineq` is used when the equation can be re-writen as $xxx <= 0$ and `eval_g_eq` is for when it can be re-writen as $xxx = 0$. In this example we only have the 1 form.
+* `nloptr` only allows a function to evaluate the parameters. `eval_g_ineq(...)` is used when the equation can be re-writen as $xxx <= 0$ and `eval_g_eq` is for when it can be re-writen as $xxx = 0$.
+    * In this example we only have the form $xxx <= 0$ so we only need `eval_g_ineq(...)`.
 
 
 Solve
-```{r}
+```{r results="hold"}
 sp1 = lb
 sp2 = ub
-opts = list(algorithm="NLOPT_LN_COBYLA")
+opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
 
-res1 = nloptr(x0=sp1, eval_f=eval_f, eval_g_ineq = eval_g_ineq, lb=lb,ub=ub, opts=opts)
-res2 = nloptr(x0=sp2, eval_f=eval_f, eval_g_ineq = eval_g_ineq, lb=lb,ub=ub, opts=opts)
+model1 = nloptr(x0 = sp1, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
+model2 = nloptr(x0 = sp2, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
 
-print.nloptr(res1)
-print.nloptr(res2)
+-1*model1$objective
+-1*model2$objective
+round(model1$solution, 2)
+round(model2$solution, 2)
+
+print(model1)
+print(model2)
 ```
 
 * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+* Use `-1*model1$objective` because we fliped the objective when converting max to min.
+* `-1*model1$objective` == `-1*model2$objective`
+    * $8,400
+* `model1$solution` == `model2$solution`
+    * chairs = 0, desks = 275, tables = 100
+* The result matched the book
 
