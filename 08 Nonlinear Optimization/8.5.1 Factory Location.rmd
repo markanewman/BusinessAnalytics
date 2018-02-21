@@ -3,34 +3,9 @@ title: "8.5.1 Factory Location"
 author: "Mark Newman"
 output:
   html_document: default
+editor_options: 
+  chunk_output_type: console
 ---
-
-# Clear everything
-```{r}
-rm(list = ls())
-options(scipen = 999)
-```
-
-# Required packages
-```{r message=FALSE, warning=FALSE}
-if (!require('NlcOptim')) install.packages('NlcOptim', quiet=TRUE)
-```
-
-* `NlcOptim` is a popular R package implementing a nonlinear solver.
-
-# Formulation
-
-Descision variables
-
-* location (x,y)
-
-Objective function
-
-* Minimize: sum(sqrt((x - x1)^2 + (y - y1)^2))
-  
-Subject to:
-
-* None
 
 # Tables
 Site | x | y
@@ -46,8 +21,33 @@ Site | x | y
  9 | 182 |  2
 10 | 190 | 56
 
+# Formulation
+
+Descision variables
+
+* location (x,y)
+
+Objective function
+
+* Minimize: $\sum_{i=1}^{10}\sqrt{(x - x_{i})^2 + (y - y_{i})^2}$
+  
+Subject to
+
+* None
 
 # R translation
+
+Clear everything
+```{r}
+rm(list = ls())
+options(scipen = 999)
+```
+
+Required packages
+```{r}
+if (!require('nloptr')) install.packages('nloptr', quiet=TRUE)
+library(nloptr)
+```
 
 Tables
 ```{r}
@@ -57,9 +57,7 @@ colnames(sites) = c("Site", "X", "Y")
 
 Objective function
 ```{r}
-objfun = function(x) {
-  
-  print(as.vector(x))
+eval_f = function(x) {
   
   s = 0
   t = sites[,2:3]
@@ -71,64 +69,42 @@ objfun = function(x) {
   
   return(s)
 }
-abs(objfun(c(0,0)) - 1178.106) <= .001
+abs(eval_f(c(0,0)) - 1178.106) <= .001
 ```
 
 * R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sites`, but it is still available for us to do things with.
-* The only reason `print(as.vector(x))` is in the function is so we can see the path we took to solve.
 * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
     * `abs(...) <= .001` means we are the same rounded to 3 decimal places (Excel default)
     * `1178.106` comes from Excel
 
-Linear Requirments / Constraints
+Add in all constraints
 ```{r}
-# This space left blank
+lb = c(min(sites[,2]), min(sites[,3]))
+ub = c(max(sites[,2]), max(sites[,3]))
 ```
 
-* Requirments and Constraints are only added for linear equations. They are written in matrix form.
-
-Nonlinear Requirments
-```{r}
-confun = function(x) { return(list(ceq = 0, c = 0)) }
-```
-
-* If you don't have any linear requirments, you **MUST** have a nonlinear requirment. `return(list(ceq = 0, c = 0))` is the No-Op constraint.
-* ceq is for when you rewrite the nonlinear formula as xxx = 0.
-* c is for when you can rewrite the nonlinear formula as xxx <= 0.
-* You **MUST** rewrite the formulas like this. There is no option for left hand side / right hand side like in Linear Requirments.
+* Burried in this problem is a notion of centroid. Due to the way the formula is setup, we can infer bounds
 
 Solve
-```{r}
-startingpos = c(0,0)
+```{r results="hold"}
+sp1 = lb
+sp2 = ub
+opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
 
-model1 = NlcOptim::solnl(startingpos, objfun=objfun, confun=confun, maxIter = 4000)
-model1$fn
-as.vector(t(model1$par))
+model1 = nloptr(x0 = sp1, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
+model2 = nloptr(x0 = sp2, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
+
+round(model1$objective, 2)
+round(model2$objective, 2)
+round(model1$solution, 2)
+round(model2$solution, 2)
+
+print(model1)
+print(model2)
 ```
 
-* Starting at "0" is usualy a good idea to see what happens
-
-Solve (better start)
-```{r}
-startingpos = c(mean(sites[,2]), mean(sites[,3]))
-
-model2 = NlcOptim::solnl(startingpos, objfun=objfun, confun=confun, maxIter = 4000)
-model2$fn
-as.vector(t(model2$par))
-```
-
-* A "better" guess for `startingpos` is _somewhere_ inside the bounds.
-    * We are doing `solnl(...)` 2 times juat as a sanity check.
-* `model2$fn` is the value of the __Objective Function__.
-* `as.vector(t(model2$par))` are the values of the __Descision Variables__
-
-Compare results
-```{r}
-abs(model1$fn - model2$fn) <= .0001
-abs(t(model1$par) - t(model2$par)) <= .0001
-```
-
-* x=114.0707, y=35.1722 yealds 670.638 is super close to the book result. and is identical if rounded to 1 decimal place.
+* When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+* x=114.07, y=35.17 yealds 670.64 is super close to the book result and is identical if rounded to 1 decimal place.
 
 # Book results
 
