@@ -31,71 +31,57 @@ Subject to
 
 # R translation
 
-Clear everything
-```{r}
+**Process**
+
+* Clear everything
+* Required packages
+* Create model
+* Name descision variables
+* Add objective function
+    * `xxx` is there to suppress the output
+* Add in all constraints
+    * `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
+    * Demand Potential _can_ be implemented as a constraint ($x_{c} <= 360$). However, it is _better_ to implement it as a bound.
+* Solve
+    * `res == 0` is the status code for _optimal solution found_
+    * `get.objective(...)` gets the value of the _objective function_
+        * $Objective = 8400$
+    * `get.variables(...)` gets the value of the _descision variables_
+        * $X = 0,275,100$
+* Cleanup
+
+**R Results**
+
+Make profit of $8,400 by building the below
+
+* 0 chairs
+* 275 desks
+* 100 tables
+
+**Book results**
+
+Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
+
+**Code**
+```{r results="hold"}
 rm(list = ls())
 options(scipen = 999)
-```
-
-Required packages
-```{r}
 if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
 library(lpSolveAPI)
-```
-
-Create model
-```{r}
 lpm = make.lp(ncol = 3, nrow = 0)
-```
-
-Name descision variables
-```{r}
 dimnames(lpm)[[2]] = c("xc","xd","xt")
-```
-
-Add objective function
-```{r}
 set.objfn(lpm, c(15,24,18))
 xxx = lp.control(lpm, sense = "max")
-```
-
-* `xxx` is there to suppress the output
-
-Add in all constraints
-```{r}
 add.constraint(lpm, c(4,6,2), "<=", 1850)
 add.constraint(lpm, c(3,5,7), "<=", 2400)
 add.constraint(lpm, c(3,2,4), "<=", 1500)
 set.bounds(lpm, lower = c(0,0,0), upper = c(360,300,100))
 dimnames(lpm)[[1]] = c("Fabrication", "Assembly", "Shipping")
-```
-
-* `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
-* Demand Potential _can_ be implemented as a constraint ($x_{c} <= 360$). However, it is _better_ to implement it as a bound.
-
-
-Solve
-```{r}
 res = solve.lpExtPtr(lpm)
 res == 0
 get.objective(lpm)
 get.variables(lpm)
-
 print.lpExtPtr(lpm)
-```
-
-* `res == 0` is the status code for _optimal solution found_
-* `get.objective(...)` gets the value of the _objective function_
-* `get.variables(...)` gets the value of the _descision variables_
-
-Cleanup
-```{r}
 delete.lp(lpm)
 ```
-
-# Book results
-
-Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
-
-This matches our result `get.variables(...)` [0,275,100] yealds `get.objective(...)` 8400
 
