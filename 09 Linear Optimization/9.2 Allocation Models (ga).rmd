@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-The intent of this extended example is to look at how to solve a clasic lp formulation using a genetic solver to see how the different R packages work. 
+The intent of this extended example is to look at how to solve a clasic lp formulation using a genetic solver to see how the different R packages work. **Please note** genetic algorithms are **ill suited** to solve linear and smooth non-linear problems. They get "close", but not optimal. Their power is getting unstuck from a local min/max to goto a global min/max.
 
 # LP Formulation
 
@@ -38,24 +38,28 @@ Subject to
 * Clear everything
 * Required packages
 * Add objective function
-    * `nloptr` only solves for the minimum. So to maxmize $f(x)$ we just minimize $-f(x)$
-* Add in all constraints
-    * `nloptr` only allows a function to evaluate the parameters. `eval_g_ineq(...)` is used when the equation can be re-writen as $xxx <= 0$ and `eval_g_eq` is for when it can be re-writen as $xxx = 0$.
-        * In this example we only have the form $xxx <= 0$ so we only need `eval_g_ineq(...)`.
+    * `genoud` apperes to only allows for the notion of "fitness" and not constraints. so calculate the `objective`, then exaluate all the `constraints`. if any of the constraints are violated make the objective `0`
+        * Objective Max should update the result to a small(`0`) value
+        * Objective Min should update the result to a large value
+    * All constraints should be re-written in the form of $f(x) <= 0$ to make the final update eiser to understand
+* Add in the Domain. The first column is the lower bound and the second column is the upper bound.
 * Solve
-    * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
-    * Use `-1*model1$objective` because we fliped the objective when converting max to min.
-    * `-1*model1$objective` == `-1*model2$objective`
-        * $Objective = 8400$
-    * `model1$solution` == `model2$solution`
-        * $X = 0,275,100$
+    * When using a genetic algorithm solver, always do at least 2 starting positions. Upper (`Domains[,2]`) and lower (`Domains[,1]`) bounds are usualy good bets.
+    * Use `set.seed(...)` to get predictable results when re-running.
+    * Use `data.type.int = TRUE` whenever posible else the GA will tend to return a float
+    * Use `Domains` but **NOT** `boundary.enforcement=2`. This may seem counter intituive, but if the generation can't "grow" outside the space, it has a hard time aproaching the line.
+    * Use `print.level = 0` because `genoud(...)` is _super_ chatty otherwise.
+    * `model1$value` is the result of the objective function.
+        * $Objective = 8397$
+    * `model1$par` are the values of the desision variables that made the `model1$value`
+        * $X = 3,273,100$
 
 **R Results**
 
-Make profit of $8,400 by building the below
+Make profit of $8,397 by building the below
 
-* 0 chairs
-* 275 desks
+* 3 chairs
+* 273 desks
 * 100 tables
 
 **Book results**
@@ -70,32 +74,31 @@ if (!require('rgenoud')) install.packages('rgenoud', quiet=TRUE)
 library(rgenoud)
 fn = function(x) {
   
-    objective = -1*(15*x[1] + 24*x[2] + 18*x[3])
-
+    objective = 15*x[1] + 24*x[2] + 18*x[3]
+    constraints = c(
+      4*x[1] + 6*x[2] + 2*x[3] - 1850,
+      3*x[1] + 5*x[2] + 7*x[3] - 2400,
+      3*x[1] + 2*x[2] + 4*x[3] - 1500
+    )
+    
+    if(any(constraints > 0))
+      objective = 0
+    
     return (objective)
 }
-eval_g_ineq = function(x) {
-  
-  objective = c(
-    4*x[1] + 6*x[2] + 2*x[3] - 1850,
-    3*x[1] + 5*x[2] + 7*x[3] - 2400,
-    3*x[1] + 2*x[2] + 4*x[3] - 1500
-  )
+Domains = t(matrix(c(0,0,0,360,300,100), nrow = 2, ncol = 3, byrow = TRUE))
 
-  return (objective)
-}
-lb = c(0,0,0)
-ub = c(360,300,100)
-sp1 = lb
-sp2 = ub
-opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
-model1 = nloptr(x0 = sp1, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
-model2 = nloptr(x0 = sp2, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
--1*model1$objective
--1*model2$objective
-round(model1$solution, 2)
-round(model2$solution, 2)
-print(model1)
-print(model2)
+sp1 = Domains[,1]
+sp2 = Domains[,2]
+
+set.seed(1)
+model1 = genoud(fn=fn, nvars=3, max=TRUE, starting.values=sp1, Domains=Domains, print.level = 0, data.type.int = TRUE)
+set.seed(1)
+model2 = genoud(fn=fn, nvars=3, max=TRUE, starting.values=sp2, Domains=Domains, print.level = 0, data.type.int = TRUE)
+
+model1$value
+model2$value
+model1$par
+model2$par
 ```
 
