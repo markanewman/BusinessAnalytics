@@ -1,0 +1,170 @@
+---
+title: "12.7 Machine-Sequencing Problem (2 machine)"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+The purpose of this problem is to extend the earler 1 machine sample into 2 machines. This is not in the book so I can't know the best solution
+
+# Tables
+
+|Job Number | 1 | 2 | 3 | 4 | 5 | 6 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Processing time M1 | 15 | 17 | 19 | 21 | 23 | 25 |
+| Processing time M2 | 16 | 18 | 20 | 20 | 22 | 24 |
+| Due date | 28 | 35 | 24 | 32 | 30 | 40 |
+
+# Formulation
+
+Static variables
+
+$D = d_{x}$
+
+* The due date of job $x$
+    * $D = [28,35,24,32,30,40]$
+    
+$P = p_{x}$
+
+* The time to process job $x$
+    * $P = [5,7,9,11,13,15]$
+
+Descision variables
+
+$X = x_{1}, x_{2}, ... x_{6}, y_{1}$
+
+* $x_{i}$ is the job number in position x.
+    * Processing job 2 in position 4 would mean $x_{4} = 2$
+* $y_{1}$ is the number of jobs to be processed on machine x
+
+Objective function
+
+* Minimize: $\sum_{i=1}^{y_{1}}\max(0, \sum_{j=1}^{i}p_{x_{j}} - d_{x_{j}}) + \sum_{i=(y_{1}+1)}^{6}\max(0, \sum_{j=1}^{i}p_{x_{j}} - d_{x_{j}})$
+
+Subject to
+
+* All different $x_{i}$ 
+* Bounds
+     * $1 <= x_{i} <= 6$
+     * $0 <= y_{1} <= 6$
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Required packages
+* Setup tables
+* When the objective is to minimize, GA constraint violations need to force large $M$ for the fitness function. Assume the worst for everything, then double.
+* Add fitness function
+    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `fitness`, then evaluate all the `constraints`. If any of the constraints are violated force $M$
+        * Objective Min should update the result to a large value
+    * Test `fn(...)`
+        * `fn(1:6,6)` means process all the work on machiene #1 and leave the other idle
+* Add in the Domain. The first column is the lower bound and the second column is the upper bound.
+* Solve
+    * When using a genetic algorithm solver, always do at least 2 starting positions. In-order 50/50 (`1:6,3`) and reverse-order 50/50 (`6:1,3`) seem like good bets.
+    * Use `set.seed(...)` to get predictable results when re-running.
+    * Use `data.type.int = TRUE` whenever posible else the GA will tend to return a float
+    * Use `Domains` but **NOT** `boundary.enforcement=2`. This may seem counter intituive, but if the generation can't "grow" outside the space, it has a hard time aproaching the line.
+    * Use `print.level = 0` because `genoud(...)` is _super_ chatty otherwise.
+    * `$value`  is the result of the objective function.
+    * `$par` are the values of the desision variables that made the `$value`
+* Solve (exhaust)
+    * This is a sample that is not part of the book. Therefor double check the only way there is, exhaust the search space.
+
+**R Results**
+
+The minimum over due is $54$ using the sequence $X = [3,2,5,1,4,6,3]$ based on `model1`
+
+* Machine 1 = $X_{1} = [3,2,5]$
+* Machine 2 = $X_{2} = [1,4,6]$
+* `model2` performs the same, but with a different sequence $X = [3,2,6,1,4,5,3]$
+
+**R results (exhaust)**
+
+The minimum over due is $54$ using the sequence $X = [3,2,5,1,4,6,3]$ based on an exhaustive search
+
+* Machine 1 = $X_{1} = [3,2,5]$
+* Machine 2 = $X_{2} = [1,4,6]$
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('rgenoud')) install.packages('rgenoud', quiet=TRUE)
+library(rgenoud)
+tab = matrix(c(15,17,19,21,23,25,16,18,20,20,22,24,28,35,24,32,30,40), nrow = 3, ncol = 6, byrow = TRUE)
+M = 2*(max(tab[3,]) + ncol(tab)*(max(tab[3,]) + max(tab[1:2,]) - min(tab[3,])))
+fn = function(x) {
+  
+  seq = x[1:(length(x)-1)]
+  m1 = x[length(x)] 
+  m2 = length(seq) - m1 
+
+  fitness = 0
+  if(m1 > 0) {
+    
+    s = seq[1:m1]
+    pro = tab[1, s] # processing time re-ordered by sequence
+    dro = tab[3, s] # due date re-ordered by sequence
+    
+    for(i in 1:m1) {
+      fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
+    }
+  }
+  if(m2 > 0) {
+    s = seq[(m1+1):(m2+m1)]
+    pro = tab[2, s] # processing time re-ordered by sequence
+    dro = tab[3, s] # due date re-ordered by sequence
+    
+    for(i in 1:m2) {
+      fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
+    }
+  }
+  
+  if(length(unique(seq)) != length(seq))
+    fitness = M
+
+  return (fitness)
+}
+fn(c(1:6,6)) == 212
+fn(c(1:6,0)) == 218
+fn(c(1:6,1)) == 154
+fn(c(1,2,3,4,5,5,6)) == M
+Domains = t(matrix(c(1,1,1,1,1,1,0,6,6,6,6,6,6,6), nrow = 2, ncol = 7, byrow = TRUE))
+sp1 = c(1:6,3)
+sp2 = c(6:1,3)
+set.seed(1)
+model1 = genoud(fn=fn, nvars=7, starting.values=sp1, Domains=Domains, print.level = 0, data.type.int = TRUE)
+set.seed(1)
+model2 = genoud(fn=fn, nvars=7, starting.values=sp2, Domains=Domains, print.level = 0, data.type.int = TRUE)
+model1$value
+model2$value
+model1$par
+model2$par
+```
+
+**Code (exhaust)**
+```{r results="hold"}
+if (!require('gtools')) install.packages('gtools', quiet=TRUE)
+library(gtools)
+vals = permutations(n=6, r=6, v=1:6)
+besti = 0
+bestj = 0
+bestfn = M
+for(i in 1:nrow(vals)) {
+  for(j in 0:6) {
+    currfn = fn(c(vals[i,], j))
+    if(currfn < bestfn) {
+      bestfn = currfn
+      besti = i
+      bestj = j
+    }
+  }
+}
+bestfn
+c(vals[besti,], bestj)
+```

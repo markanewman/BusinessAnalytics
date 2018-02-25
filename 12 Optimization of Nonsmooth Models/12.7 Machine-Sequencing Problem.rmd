@@ -32,16 +32,18 @@ Descision variables
 
 $X = x_{1}, x_{2}, ... x_{6}$
 
-* The job number in position x.
+* $x_{i}$ is the job number in position x.
     * Processing job 2 in position 4 would mean $x_{4} = 2$
 
 Objective function
 
-* Minimize: $\sum_{i=1}^{6}\max(0, \sum_{j=1}^{i}p_{x_{i}} - d_{x_{i}})$
+* Minimize: $\sum_{i=1}^{6}\max(0, \sum_{j=1}^{i}p_{x_{j}} - d_{x_{j}})$
   
 Subject to
 
-* All different $j_{x}$ 
+* All different $x_{i}$ 
+* Bounds
+     * $1 <= x_{i} <= 6$
 
 # R translation
 
@@ -50,12 +52,10 @@ Subject to
 * Clear everything
 * Required packages
 * Setup tables
+* When the objective is to minimize, GA constraint violations need to force large $M$ for the fitness function. Assume the worst for everything, then double.
 * Add fitness function
-    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `objective`, then exaluate all the `constraints`. If any of the constraints are violated make the objective `204`
+    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `fitness`, then evaluate all the `constraints`. If any of the constraints are violated force $M$
         * Objective Min should update the result to a large value
-        * $204 = \max(D) + \sum_{x=1}^{6}\max(D)+\max(P)-\min(D)$
-            * Don't start anything at all until the max due date has pased
-            * Always assume the longest time
     * Test `fn(...)`
 * Add in the Domain. The first column is the lower bound and the second column is the upper bound.
 * Solve
@@ -85,24 +85,25 @@ options(scipen = 999)
 if (!require('rgenoud')) install.packages('rgenoud', quiet=TRUE)
 library(rgenoud)
 tab = matrix(c(5,7,9,11,13,15,28,35,24,32,30,40), nrow = 2, ncol = 6, byrow = TRUE)
+M = 2*(max(tab[2,]) + ncol(tab)*(max(tab[2,]) + max(tab[1,]) - min(tab[2,])))
 fn = function(x) {
   
   len = length(x)
   pro = tab[1, x] # processing time re-ordered by sequence
   dro = tab[2, x] # due date re-ordered by sequence
   
-  objective = 0
+  fitness = 0
   for(i in 1:len) {
-    objective = objective + max(0, sum(pro[1:i]) - dro[i])
+    fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
   }
   
   if(length(unique(x)) != length(x))
-    objective = 204
+    fitness = M
 
-  return (objective)
+  return (fitness)
 }
 fn(1:6) == 35
-fn(c(1,2,3,4,5,5)) == 204
+fn(c(1,2,3,4,5,5)) == M
 Domains = t(matrix(c(1,1,1,1,1,1,6,6,6,6,6,6), nrow = 2, ncol = 6, byrow = TRUE))
 sp1 = 1:6
 sp2 = 6:1
