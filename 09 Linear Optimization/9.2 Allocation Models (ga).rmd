@@ -37,10 +37,9 @@ Subject to
 
 * Clear everything
 * Required packages
-* Add objective function
-    * `genoud` apperes to only allows for the notion of "fitness" and not constraints. so calculate the `objective`, then exaluate all the `constraints`. if any of the constraints are violated make the objective `0`
+* Add fitness function
+    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. so calculate the `objective`, then exaluate all the `constraints`. if any of the constraints are violated make the objective `0`
         * Objective Max should update the result to a small(`0`) value
-        * Objective Min should update the result to a large value
     * All constraints should be re-written in the form of $f(x) <= 0$ to make the final update eiser to understand
 * Add in the Domain. The first column is the lower bound and the second column is the upper bound.
 * Solve

@@ -1,0 +1,118 @@
+---
+title: "12.7 Machine-Sequencing Problem"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Tables
+
+|Job Number | 1 | 2 | 3 | 4 | 5 | 6 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Processing time | 5 | 7 | 9 | 11 | 13 | 15 |
+| Due date | 28 | 35 | 24 | 32 | 30 | 40 |
+
+# Formulation
+
+Static variables
+
+$D = d_{x}$
+
+* The due date of job $x$
+    * $D = [28,35,24,32,30,40]$
+    
+$P = p_{x}$
+
+* The time to process job $x$
+    * $P = [5,7,9,11,13,15]$
+
+Descision variables
+
+$X = x_{1}, x_{2}, ... x_{6}$
+
+* The job number in position x.
+    * Processing job 2 in position 4 would mean $x_{4} = 2$
+
+Objective function
+
+* Minimize: $\sum_{i=1}^{6}\max(0, \sum_{j=1}^{i}p_{x_{i}} - d_{x_{i}})$
+  
+Subject to
+
+* All different $j_{x}$ 
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Required packages
+* Setup tables
+* Add fitness function
+    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `objective`, then exaluate all the `constraints`. If any of the constraints are violated make the objective `204`
+        * Objective Min should update the result to a large value
+        * $204 = \max(D) + \sum_{x=1}^{6}\max(D)+\max(P)-\min(D)$
+            * Don't start anything at all until the max due date has pased
+            * Always assume the longest time
+    * Test `fn(...)`
+* Add in the Domain. The first column is the lower bound and the second column is the upper bound.
+* Solve
+    * When using a genetic algorithm solver, always do at least 2 starting positions. In-order (`1:6`) and reverse-order(`6:1`) seem like good bets.
+    * Use `set.seed(...)` to get predictable results when re-running.
+    * Use `data.type.int = TRUE` whenever posible else the GA will tend to return a float
+    * Use `Domains` but **NOT** `boundary.enforcement=2`. This may seem counter intituive, but if the generation can't "grow" outside the space, it has a hard time aproaching the line.
+    * Use `print.level = 0` because `genoud(...)` is _super_ chatty otherwise.
+    * `$value`  is the result of the objective function.
+    * `$par` are the values of the desision variables that made the `$value`
+
+**R Results**
+
+The minimum over due is $33$ using the sequence $X = [3,1,5,2,4,6]$ based on `model2`
+
+* `model1` performs poorer($35$)
+* Other answers (i.e. the books $X = [1,3,5,2,4,6]$) can produce a similar result
+
+**Book results**
+
+Per page 347 "... producing the solution shown in Figure 12.10, with an objective function value of 33." [The sequence is $X = [1,3,5,2,4,6]]
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('rgenoud')) install.packages('rgenoud', quiet=TRUE)
+library(rgenoud)
+tab = matrix(c(5,7,9,11,13,15,28,35,24,32,30,40), nrow = 2, ncol = 6, byrow = TRUE)
+fn = function(x) {
+  
+  len = length(x)
+  pro = tab[1, x] # processing time re-ordered by sequence
+  dro = tab[2, x] # due date re-ordered by sequence
+  
+  objective = 0
+  for(i in 1:len) {
+    objective = objective + max(0, sum(pro[1:i]) - dro[i])
+  }
+  
+  if(length(unique(x)) != length(x))
+    objective = 204
+
+  return (objective)
+}
+fn(1:6) == 35
+fn(c(1,2,3,4,5,5)) == 204
+Domains = t(matrix(c(1,1,1,1,1,1,6,6,6,6,6,6), nrow = 2, ncol = 6, byrow = TRUE))
+sp1 = 1:6
+sp2 = 6:1
+set.seed(1)
+model1 = genoud(fn=fn, nvars=6, starting.values=sp1, Domains=Domains, print.level = 0, data.type.int = TRUE)
+set.seed(1)
+model2 = genoud(fn=fn, nvars=6, starting.values=sp2, Domains=Domains, print.level = 0, data.type.int = TRUE)
+model1$value
+model2$value
+model1$par
+model2$par
+```
+
