@@ -1,0 +1,105 @@
+---
+title: "9.2 Allocation Models (evolution algorithm)"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+The intent of this extended example is to look at how to solve a clasic lp formulation using an evolution solver to see how the different R packages work. **Please note** evolutionary algorithms are **ill suited** to solve linear and smooth non-linear problems. Sometimes they get "close", but not optimal. Their power is getting unstuck from a local min/max and go to a global min/max.
+
+# LP Formulation
+
+Descision variables
+
+$X = x_{c}, x_{d}, x_{t}$
+
+* (c)hair, (d)esk, (t)able
+
+Objective function
+
+* Maximize: $15x_{c} + 24x_{d} + 18x_{t}$
+  
+Subject to
+
+* Fabrication: $4x_{c} + 6x_{d} + 2x_{t} <= 1850$
+* Assembly: $3x_{c} + 5x_{d} + 7x_{t} <= 2400$
+* Shipping: $3x_{c} + 2x_{d} + 4x_{t} <= 1500$
+* Demand Potential:
+    * $x_{c} <= 360$
+    * $x_{d} <= 300$
+    * $x_{t} <= 100$
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Required packages
+* Add objective function
+    * `JDEoptim(...)` only supports minimazation. To allow a "minimazation only" algorithm to find a maximum use `return (-1*objective)`
+    * `JDEoptim(...)` only supports real valued inputs. To force some of those to be ints use `floor(...)` in the objective function
+* Add in the constraints
+    * All constraints should be re-written in the form of $f(x) = 0$ or $f(x) <= 0$
+    * `JDEoptim(...)` only supports real valued inputs. To force some of those to be ints use `floor(...)` in the objective function
+* Add in bounds
+* Use `tol = 0.000001`
+    * The default tolarance is _too_ small for most cases
+* Use `set.seed(...)`
+    * This ensures predictable results when re-running.
+* Solve
+    * `JDEoptim(...)` only supports real valued inputs. To _allow_ some of those to be ints, use `(ub+1)`
+    * `meq=0` forces the first $0$ results from `constr(...)` to be considered as $=0$ then the rest as $<=0$
+    * `model$value` is the result of the objective function.
+        * $Objective = 8400$
+    * `model$par` are the values of the desision variables that made the `model1$value`
+        * $X = 1,274,100$
+* Double check all constraints are meet
+
+**R Results**
+
+Make profit of $8,400 by building the below
+
+* 0 chairs
+* 275 desks
+* 100 tables
+
+**Book results**
+
+Per page 245 "As shown in Figure 9.6, ... no chairs, 275 desks, and 100 tables... maximum profit contributation is $8,400..."
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('DEoptimR')) install.packages('DEoptimR', quiet=TRUE)
+library(DEoptimR)
+fn = function(x) {
+  
+  x = floor(x)
+  objective = 15*x[1] + 24*x[2] + 18*x[3]
+
+  return (-1*objective)
+}
+constr = function(x) {
+  
+  x = floor(x)
+  constraints = c(
+    4*x[1] + 6*x[2] + 2*x[3] - 1850,
+    3*x[1] + 5*x[2] + 7*x[3] - 2400,
+    3*x[1] + 2*x[2] + 4*x[3] - 1500
+  )
+    
+  return(constraints)
+}
+lb = c(0,0,0)
+ub = c(360,300,100)
+tol = 0.000001
+set.seed(1)
+model = JDEoptim(lower=lb, upper=(ub+1), fn=fn, constr=constr, meq=0, tol=tol)
+-1*model$value
+floor(model$par)
+all(constr(floor(model$par)) <= 0)
+```
+
