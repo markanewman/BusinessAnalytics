@@ -59,12 +59,9 @@ Subject to
 * Clear everything
 * Required packages
 * Setup tables
-* When the objective is to minimize, GA constraint violations need to force large $M$ for the fitness function. Assume the worst for everything, then double.
 * Add fitness function
-    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `fitness`, then evaluate all the `constraints`. If any of the constraints are violated force $M$
-        * Objective Min should update the result to a large value
+    * `JDEoptim(...)` only supports real valued inputs. To _force_ some of those to be ints use `floor(...)` in the objective function
     * Test `fn(...)`
-        * `fn(1:6,6)` means process all the work on machiene #1 and leave the other idle
 * Add in the Domain. The first column is the lower bound and the second column is the upper bound.
 * Solve
     * When using a genetic algorithm solver, always do at least 2 starting positions. In-order 50/50 (`1:6,3`) and reverse-order 50/50 (`6:1,3`) seem like good bets.
