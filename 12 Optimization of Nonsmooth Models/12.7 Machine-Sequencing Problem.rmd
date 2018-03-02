@@ -52,27 +52,33 @@ Subject to
 * Clear everything
 * Required packages
 * Setup tables
-* When the objective is to minimize, GA constraint violations need to force large $M$ for the fitness function. Assume the worst for everything, then double.
 * Add fitness function
-    * `genoud(...)` apperes to only allows for the notion of "fitness" and not constraints. So calculate the `fitness`, then evaluate all the `constraints`. If any of the constraints are violated force $M$
-        * Objective Min should update the result to a large value
+    * `JDEoptim(...)` only supports real valued inputs. To _force_ some of those to be ints use `floor(...)` in the objective function
     * Test `fn(...)`
-* Add in the Domain. The first column is the lower bound and the second column is the upper bound.
+* Add in the constraints
+    * All constraints should be re-written in the form of $f(x) = 0$ or $f(x) <= 0$
+    * `JDEoptim(...)` only supports real valued inputs. To _force_ some of those to be ints use `floor(...)` in the objective function
+    * In the case of straight `TRUE`/`FALSE` constraints like "All Different" return `-1` and make that an equality constraint. If you make it `+1`,this algorithm freaks out and stops. I don't know why.
+    * Test `constr(...)`
+* Add in bounds
+* Use `tol = 0.000001`
+    * The default tolarance is _too_ small for most cases
+* Use `set.seed(...)`
+    * This ensures predictable results when re-running.
 * Solve
-    * When using a genetic algorithm solver, always do at least 2 starting positions. In-order (`1:6`) and reverse-order(`6:1`) seem like good bets.
-    * Use `set.seed(...)` to get predictable results when re-running.
-    * Use `data.type.int = TRUE` whenever posible else the GA will tend to return a float
-    * Use `Domains` but **NOT** `boundary.enforcement=2`. This may seem counter intituive, but if the generation can't "grow" outside the space, it has a hard time aproaching the line.
-    * Use `print.level = 0` because `genoud(...)` is _super_ chatty otherwise.
-    * `$value`  is the result of the objective function.
-    * `$par` are the values of the desision variables that made the `$value`
+    * `JDEoptim(...)` only supports real valued inputs. To _allow_ some of those to be ints, use `(ub+1)`
+    * `meq=1` forces the first $1$ results from `constr(...)` to be considered as $=0$ then the rest as $<=0$
+    * `model$value` is the result of the objective function.
+        * $Objective = 33$
+    * `model$par` are the values of the desision variables that made the `model$value`
+        * $X = [5,3,1,2,4,6]$
+* Double check all constraints are meet
 
 **R Results**
 
-The minimum over due is $33$ using the sequence $X = [3,1,5,2,4,6]$ based on `model2`
+The minimum over due is $33$ using the sequence $X = [5,3,1,2,4,6]$ based on `model2`
 
-* `model1` performs poorer($35$)
-* Other answers (i.e. the books $X = [1,3,5,2,4,6]$) can produce a similar result
+* Other answers (i.e. the book's $X = [1,3,5,2,4,6]$) can the same _result_, just not a "better" result
 
 **Book results**
 
@@ -82,11 +88,12 @@ Per page 347 "... producing the solution shown in Figure 12.10, with an objectiv
 ```{r results="hold"}
 rm(list = ls())
 options(scipen = 999)
-if (!require('rgenoud')) install.packages('rgenoud', quiet=TRUE)
-library(rgenoud)
+if (!require('DEoptimR')) install.packages('DEoptimR', quiet=TRUE)
+library(DEoptimR)
 tab = matrix(c(5,7,9,11,13,15,28,35,24,32,30,40), nrow = 2, ncol = 6, byrow = TRUE)
-M = 2*(max(tab[2,]) + ncol(tab)*(max(tab[2,]) + max(tab[1,]) - min(tab[2,])))
 fn = function(x) {
+  
+  x = floor(x)
   
   len = length(x)
   pro = tab[1, x] # processing time re-ordered by sequence
@@ -96,24 +103,29 @@ fn = function(x) {
   for(i in 1:len) {
     fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
   }
-  
-  if(length(unique(x)) != length(x))
-    fitness = M
 
   return (fitness)
 }
+constr = function(x) {
+  
+  x = floor(x)
+  constraints = c(0)
+  
+  if(length(unique(x)) != length(x))
+    constraints[1] = -1
+
+  return(constraints)
+}
 fn(1:6) == 35
-fn(c(1,2,3,4,5,5)) == M
-Domains = t(matrix(c(1,1,1,1,1,1,6,6,6,6,6,6), nrow = 2, ncol = 6, byrow = TRUE))
-sp1 = 1:6
-sp2 = 6:1
+constr(c(1,2,3,4,5,5)) == c(-1)
+constr(c(1,2,3,4,5,6)) == c(0)
+lb = c(1,1,1,1,1,1)
+ub = c(6,6,6,6,6,6)
+tol = 0.000001
 set.seed(1)
-model1 = genoud(fn=fn, nvars=6, starting.values=sp1, Domains=Domains, print.level = 0, data.type.int = TRUE)
-set.seed(1)
-model2 = genoud(fn=fn, nvars=6, starting.values=sp2, Domains=Domains, print.level = 0, data.type.int = TRUE)
-model1$value
-model2$value
-model1$par
-model2$par
+model = JDEoptim(lower=lb, upper=(ub+1), fn=fn, constr=constr, meq=1, tol=tol)
+model$value
+floor(model$par)
+all(constr(floor(model$par)) == 0)
 ```
 
