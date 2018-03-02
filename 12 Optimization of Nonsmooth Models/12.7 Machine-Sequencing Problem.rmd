@@ -78,11 +78,11 @@ Subject to
 
 The minimum over due is $33$ using the sequence $X = [5,3,1,2,4,6]$ based on `model2`
 
-* Other answers (i.e. the book's $X = [1,3,5,2,4,6]$) can the same _result_, just not a "better" result
+* Other answers (i.e. the book's $X = [1,3,5,2,4,6]$) can have the same _result_, just not a "better" result
 
 **Book results**
 
-Per page 347 "... producing the solution shown in Figure 12.10, with an objective function value of 33." [The sequence is $X = [1,3,5,2,4,6]]
+Per page 347 "... producing the solution shown in Figure 12.10, with an objective function value of 33." [The sequence is $X = [1,3,5,2,4,6]$]
 
 **Code**
 ```{r results="hold"}

@@ -62,32 +62,40 @@ Subject to
 * Add fitness function
     * `JDEoptim(...)` only supports real valued inputs. To _force_ some of those to be ints use `floor(...)` in the objective function
     * Test `fn(...)`
-* Add in the Domain. The first column is the lower bound and the second column is the upper bound.
+* Add in the constraints
+    * All constraints should be re-written in the form of $f(x) = 0$ or $f(x) <= 0$
+    * `JDEoptim(...)` only supports real valued inputs. To _force_ some of those to be ints use `floor(...)` in the objective function
+    * In the case of straight `TRUE`/`FALSE` constraints like "All Different" return `-1` and make that an equality constraint. If you make it `+1`,this algorithm freaks out and stops. I don't know why.
+    * Test `constr(...)`
+* Add in bounds
+* Use `tol = 0.000001`
+    * The default tolarance is _too_ small for most cases
+* Use `set.seed(...)`
+    * This ensures predictable results when re-running.
 * Solve
-    * When using a genetic algorithm solver, always do at least 2 starting positions. In-order 50/50 (`1:6,3`) and reverse-order 50/50 (`6:1,3`) seem like good bets.
-    * Use `set.seed(...)` to get predictable results when re-running.
-    * Use `data.type.int = TRUE` whenever posible else the GA will tend to return a float
-    * Use `Domains` but **NOT** `boundary.enforcement=2`. This may seem counter intituive, but if the generation can't "grow" outside the space, it has a hard time aproaching the line.
-    * Use `print.level = 0` because `genoud(...)` is _super_ chatty otherwise.
-    * `$value`  is the result of the objective function.
-    * `$par` are the values of the desision variables that made the `$value`
+    * `JDEoptim(...)` only supports real valued inputs. To _allow_ some of those to be ints, use `(ub+1)`
+    * `meq=1` forces the first $1$ results from `constr(...)` to be considered as $=0$ then the rest as $<=0$
+    * `model$value` is the result of the objective function.
+        * $Objective = 29$
+    * `model$par` are the values of the desision variables that made the `model$value`
+        * $X = [3,1,4,5,2,6,3]$
+* Double check all constraints are meet
 * Solve (exhaust)
     * This is a sample that is not part of the book. Therefor double check the only way there is, exhaust the search space.
 
 **R Results**
 
-The minimum over due is $54$ using the sequence $X = [3,2,5,1,4,6,3]$ based on `model1`
+The minimum over due is $29$ using the sequence $X = [3,1,4,5,2,6,3]$
 
-* Machine 1 = $X_{1} = [3,2,5]$
-* Machine 2 = $X_{2} = [1,4,6]$
-* `model2` performs the same, but with a different sequence $X = [3,2,6,1,4,5,3]$
+* Machine 1 = $X_{1} = [3,1,4]$
+* Machine 2 = $X_{2} = [5,2,6]$
 
 **R results (exhaust)**
 
-The minimum over due is $54$ using the sequence $X = [3,2,5,1,4,6,3]$ based on an exhaustive search
+The minimum over due is $29$ using the sequence $X = [3,1,4,5,2,6,3]$ based on an exhaustive search
 
-* Machine 1 = $X_{1} = [3,2,5]$
-* Machine 2 = $X_{2} = [1,4,6]$
+* Machine 1 = $X_{1} = [3,1,4]$
+* Machine 2 = $X_{2} = [5,2,6]$
 
 **Code**
 ```{r results="hold"}
@@ -103,7 +111,7 @@ fn = function(x) {
   m1 = x[length(x)] 
   m2 = length(seq) - m1 
 
-  fitness = 0
+  fitness = c(0,0)
   if(m1 > 0) {
     
     s = seq[1:m1]
@@ -111,7 +119,7 @@ fn = function(x) {
     dro = tab[3, s] # due date re-ordered by sequence
     
     for(i in 1:m1) {
-      fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
+      fitness[1] = fitness[1] + max(0, sum(pro[1:i]) - dro[i])
     }
   }
   if(m2 > 0) {
@@ -120,58 +128,59 @@ fn = function(x) {
     dro = tab[3, s] # due date re-ordered by sequence
     
     for(i in 1:m2) {
-      fitness = fitness + max(0, sum(pro[1:i]) - dro[i])
+      fitness[2] = fitness[2] + max(0, sum(pro[1:i]) - dro[i])
     }
   }
-  
-  if(length(unique(seq)) != length(seq))
-    fitness = M
 
-  return (fitness)
+  return (max(fitness))
 }
 constr = function(x) {
   
   x = floor(x)
+  seq = x[1:(length(x)-1)]
+  constraints = c(0)
+  
+  if(length(unique(seq)) != length(seq))
+    constraints[1] = -1
 
-    
   return(constraints)
 }
-#fn(c(1:6,6)) == 212
-#fn(c(1:6,0)) == 218
-#fn(c(1:6,1)) == 154
-#fn(c(1,2,3,4,5,5,6)) == M
-lb = c(1,1,1,1,1,1,1)
-ub = c(6,6,6,6,6,6,5)
-#sp1 = c(1:6,3)
-#sp2 = c(6:1,3)
-#set.seed(1)
-#model1 = genoud(fn=fn, nvars=7, starting.values=sp1, Domains=Domains, print.level = 0, data.type.int = TRUE)
-#set.seed(1)
-#model2 = genoud(fn=fn, nvars=7, starting.values=sp2, Domains=Domains, print.level = 0, data.type.int = TRUE)
-#model1$value
-#model2$value
-#model1$par
-#model2$par
+fn(c(1:6,6)) == 212
+fn(c(1:6,0)) == 218
+fn(c(1:6,1)) == 154
+constr(c(1,2,3,4,5,5,1)) == c(-1)
+constr(c(1,2,3,4,5,6,1)) == c(0)
+lb = c(1,1,1,1,1,1,0)
+ub = c(6,6,6,6,6,6,6)
+tol = 0.000001
+set.seed(1)
+model = JDEoptim(lower=lb, upper=(ub+1), fn=fn, constr=constr, meq=1, tol=tol)
+model$value
+floor(model$par)
+all(constr(floor(model$par)) == 0)
 ```
 
 **Code (exhaust)**
 ```{r results="hold"}
-#if (!require('gtools')) install.packages('gtools', quiet=TRUE)
-#library(gtools)
-#vals = permutations(n=6, r=6, v=1:6)
-#besti = 0
-#bestj = 0
-#bestfn = M
-#for(i in 1:nrow(vals)) {
-#  for(j in 0:6) {
-#    currfn = fn(c(vals[i,], j))
-#    if(currfn < bestfn) {
-#      bestfn = currfn
-#      besti = i
-#      bestj = j
-#    }
-#  }
-#}
-#bestfn
-#c(vals[besti,], bestj)
+if (!require('gtools')) install.packages('gtools', quiet=TRUE)
+library(gtools)
+vals = permutations(n=6, r=6, v=1:6)
+besti = 0
+bestj = 0
+bestfn = 10000
+for(i in 1:nrow(vals)) {
+  for(j in 0:6) {
+    t1 = c(vals[i,], j)
+    if(constr(t1) == c(0)) {
+      currfn = fn(t1)
+      if(currfn < bestfn) {
+        bestfn = currfn
+        besti = i
+        bestj = j
+      }
+    }
+  }
+}
+bestfn
+c(vals[besti,], bestj)
 ```
