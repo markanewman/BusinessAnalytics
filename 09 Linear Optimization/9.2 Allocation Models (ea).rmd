@@ -23,13 +23,13 @@ Objective function
   
 Subject to
 
-* Fabrication: $4x_{c} + 6x_{d} + 2x_{t} <= 1850$
-* Assembly: $3x_{c} + 5x_{d} + 7x_{t} <= 2400$
-* Shipping: $3x_{c} + 2x_{d} + 4x_{t} <= 1500$
+* Fabrication: $4x_{c} + 6x_{d} + 2x_{t} \leq 1850$
+* Assembly: $3x_{c} + 5x_{d} + 7x_{t} \leq 2400$
+* Shipping: $3x_{c} + 2x_{d} + 4x_{t} \leq 1500$
 * Demand Potential:
-    * $x_{c} <= 360$
-    * $x_{d} <= 300$
-    * $x_{t} <= 100$
+    * $x_{c} \leq 360$
+    * $x_{d} \leq 300$
+    * $x_{t} \leq 100$
 
 # R translation
 
