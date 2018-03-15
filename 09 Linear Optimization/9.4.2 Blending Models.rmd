@@ -1,0 +1,96 @@
+---
+title: "9.4.2 Blending Models"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# LP Formulation
+
+Static variables
+
+Bean | Aroma | Strength | Cost/lb | Pounds Available
+:--:|:--:|:--:|:--:|:--:
+Brazilian | 75 | 15 | $0.50 | 1,500,000
+Colombian | 60 | 20 | $0.60 | 1,200,000
+Peruvian | 85 | 18 | $0.70 | 2,000,000
+
+Descision variables
+
+$X = x_{b}, x_{c}, x_{p}$
+
+* (B)razilian, (C)olombian, (P)eruvian
+
+Objective function
+
+* Minumize: $0.50x_{b} + 0.60x_{c} + 0.70x_{p}$
+  
+Subject to
+
+* Aroma: $78 \leq \dfrac{75x_{b} + 60x_{c} + 85x_{p}}{x_{b} + x_{c} + x_{p}}$
+    * $3x_{b} + 18x_{c} + -7x_{p} \leq 0$
+* Strength: $16 \leq \dfrac{15x_{b} + 20x_{c} + 18x_{p}}{x_{b} + x_{c} + x_{p}}$ 
+    * $1x_{b} + -4x_{c} + -2x_{p} \leq 0$
+* Final Supply: $x_{b} + x_{c} + x_{p} = 4000000$
+* Material Supply:
+    * $x_{b} \leq 1500000$
+    * $x_{c} \leq 1200000$
+    * $x_{p} \leq 2000000$
+    
+# R translation
+
+**Process**
+
+* Clear everything
+* Required packages
+* Create model
+* Name descision variables
+* Add objective function
+    * `xxx` is there to suppress the output
+* Add in all constraints
+    * `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
+    * Demand Potential _can_ be implemented as a constraint ($x_{b} <= 1.5M$). However, it is _better_ to implement it as a bound.
+* Solve
+    * `res == 0` is the status code for _optimal solution found_
+    * `get.objective(...)` gets the value of the _objective function_
+        * $Objective = 2448000$
+    * `get.variables(...)` gets the value of the _descision variables_
+        * $X = 1500000,520000,1980000$
+* Cleanup
+
+**R Results**
+
+Make profit of $2,448,000 by building the below
+
+* 1,500,000 Brazilian
+*  520,000 Colombian
+* 1,980,000 Peruvian
+
+**Book results**
+
+Per page 252 "... optimal blend of 1.5M pounds of Brazilian, 520,000 pounds of Colombian, and 1.98M pounds of Peruvian beans for a total cost of $2.448M ..."
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
+lpm = make.lp(ncol = 3, nrow = 0)
+dimnames(lpm)[[2]] = c("xb","xc","xp")
+set.objfn(lpm, c(0.50, 0.60, 0.70))
+xxx = lp.control(lpm, sense = "min")
+add.constraint(lpm, c(3,18,-7), "<=", 0)
+add.constraint(lpm, c(1,-4,-2), "<=", 0)
+add.constraint(lpm, c(1,1,1), "=", 4000000)
+set.bounds(lpm, lower = c(0,0,0), upper = c(1500000,1200000,2000000))
+dimnames(lpm)[[1]] = c("Aroma", "Strength", "Final Supply")
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+print.lpExtPtr(lpm)
+delete.lp(lpm)
+```
