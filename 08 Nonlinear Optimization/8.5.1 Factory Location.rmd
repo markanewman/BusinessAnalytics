@@ -25,7 +25,7 @@ Site | x | y
 
 Descision variables
 
-* location (x,y)
+* location ($x$,$y$)
 
 Objective function
 
@@ -37,26 +37,37 @@ Subject to
 
 # R translation
 
-Clear everything
-```{r}
+**Process**
+
+* Clear everything
+* Get required packages
+* Make tables
+* Add objective function
+    * R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sites`, but it is still available for us to do things with.
+    * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+        * `abs(...) <= .001` means we are the same rounded to 3 decimal places (Excel default)
+        * `1178.106` comes from Excel
+* Add in all constraints
+    * Burried in this problem is a notion of centroid. Due to the way the formula is setup, we can infer bounds
+* Solve
+    * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+
+**R Results**
+
+$x = 114.07$, $y = 35.17$ yealds a distince of 670.64
+
+**Book results**
+
+Per page 219 "The optimal solution ... is the location (114.1, 35.2) ... of approximately 670.6"
+
+**Code**
+```{r results="hold"}
 rm(list = ls())
 options(scipen = 999)
-```
-
-Required packages
-```{r}
 if (!require('nloptr')) install.packages('nloptr', quiet=TRUE)
 library(nloptr)
-```
-
-Tables
-```{r}
 sites = matrix(c(1,5,41,2,20,10,3,44,48,4,60,58,5,100,4,6,138,80,7,150,40,8,170,18,9,182,2,10,190,56), nrow = 10, ncol = 3, byrow = TRUE)
 colnames(sites) = c("Site", "X", "Y")
-```
-
-Objective function
-```{r}
 eval_f = function(x) {
   
   s = 0
@@ -70,42 +81,18 @@ eval_f = function(x) {
   return(s)
 }
 abs(eval_f(c(0,0)) - 1178.106) <= .001
-```
-
-* R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sites`, but it is still available for us to do things with.
-* **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
-    * `abs(...) <= .001` means we are the same rounded to 3 decimal places (Excel default)
-    * `1178.106` comes from Excel
-
-Add in all constraints
-```{r}
 lb = c(min(sites[,2]), min(sites[,3]))
 ub = c(max(sites[,2]), max(sites[,3]))
-```
-
-* Burried in this problem is a notion of centroid. Due to the way the formula is setup, we can infer bounds
-
-Solve
-```{r results="hold"}
 sp1 = lb
 sp2 = ub
 opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
-
 model1 = nloptr(x0 = sp1, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
 model2 = nloptr(x0 = sp2, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
-
 round(model1$objective, 2)
 round(model2$objective, 2)
 round(model1$solution, 2)
 round(model2$solution, 2)
-
 print(model1)
 print(model2)
 ```
 
-* When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
-* x=114.07, y=35.17 yealds 670.64 is super close to the book result and is identical if rounded to 1 decimal place.
-
-# Book results
-
-Per page 219 "The optimal solution ... is the location (114.1, 35.2) ... of approximately 670.6"
