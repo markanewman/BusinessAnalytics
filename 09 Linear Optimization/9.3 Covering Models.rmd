@@ -1,0 +1,108 @@
+---
+title: "9.3 Covering Models.rmd"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Why choose this
+
+Per page 246 "The covering model calls for minimimizing an objective function (usualy cost) subject to greater than constraints on required coverage."
+
+# LP Formulation
+
+Static variables
+
+Grams per Pound
+
+Component | Seeds | Raisins | Flakes | Pecans | Walnuts | Nutritional Requirment
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+Vitamins | 10 | 20 | 10 | 30 | 20 | 20
+Minerals | 5 | 7 | 4 | 9 | 2 | 10
+Protein | 1 | 4 | 10 | 2 | 1 | 15
+Calories | 500 | 450 | 160 | 300 | 500 | 600
+Cost/Pound | \$4 | \$5 | \$3 | \$7 | \$6 |
+
+
+Descision variables
+
+$X = x_{s}, x_{r}, x_{f}, x_{p}, x_{w}$
+
+* (S)eeds, (R)aisins, (F)lakes, (P)ecans, (W)alnuts
+
+Objective function
+
+* Minimize: $4x_{s} + 5x_{r} + 3x_{f} + 7x_{p} + 6x_{w}$
+  
+Subject to
+
+* Vitamin Requirment: $20 \leq 10x_{s} + 20x_{r} + 10x_{f} + 30x_{p} + 20x_{w}$
+    * $10x_{s} + 20x_{r} + 10x_{f} + 30x_{p} + 20x_{w} \geq 20$
+* Mineral Requirment: $10 \leq 5x_{s} + 7x_{r} + 4x_{f} + 9x_{p} + 2x_{w}$
+    * $5x_{s} + 7x_{r} + 4x_{f} + 9x_{p} + 2x_{w} \geq 10$
+* Protein Requirment: $15 \leq 1x_{s} + 4x_{r} + 10x_{f} + 2x_{p} + 1x_{w}$
+    * $1x_{s} + 4x_{r} + 10x_{f} + 2x_{p} + 1x_{w} \geq 15$
+* Calorie Requirment: $600 \leq 500x_{s} + 450x_{r} + 160x_{f} + 300x_{p} + 500x_{w}$
+    * $500x_{s} + 450x_{r} + 160x_{f} + 300x_{p} + 500x_{w} \geq 600$
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Get required packages
+* Create model
+* Name the descision variables
+* Add objective function
+    * `xxx` is there to suppress the output
+* Add in all constraints
+    * `dimnames(...)...` is here to help make the `print.lpExtPtr(...)` command look nicer
+    * Set minimum bounds.
+* Solve
+    * `res == 0` is the status code for _optimal solution found_
+    * `get.objective(...)` gets the value of the _objective function_
+        * $Objective = 7.5358$
+    * `get.variables(...)` gets the value of the _descision variables_
+        * $X = 0.4773270,0.3341289,1.3186158,0,0$
+* Cleanup
+
+**R Results**
+
+Minimum cost of $7.54 by using the below
+
+* 0.48 Seeds
+* 0.33 Raisins
+* 1.32 Flakes
+* 0 Pecans
+* 0 Walnuts
+
+**Book results**
+
+Per page 247 "... Figure 9.8, calls for 1.32 pounds of flakes, 0.33 pound of raisins, 0.48 pound of seeds, with no nuts at all... at a minimum cost of $7.54"
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('lpSolveAPI')) install.packages('lpSolveAPI', quiet=TRUE)
+library(lpSolveAPI)
+lpm = make.lp(ncol = 5, nrow = 0)
+dimnames(lpm)[[2]] = c("xs","xr","xf", "xp", "xw")
+set.objfn(lpm, c(4,5,3,7,6))
+xxx = lp.control(lpm, sense = "min")
+add.constraint(lpm, c(10,20,10,30,20), ">=", 20)
+add.constraint(lpm, c(5,7,4,9,2), ">=", 10)
+add.constraint(lpm, c(1,4,10,2,1), ">=", 15)
+add.constraint(lpm, c(500,450,160,300,500), ">=", 600)
+set.bounds(lpm, lower = c(0,0,0,0,0))
+dimnames(lpm)[[1]] = c("Vitamin", "Mineral", "Protein", "Calories")
+res = solve.lpExtPtr(lpm)
+res == 0
+get.objective(lpm)
+get.variables(lpm)
+print.lpExtPtr(lpm)
+delete.lp(lpm)
+```
+
