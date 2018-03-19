@@ -43,7 +43,7 @@ Subject to
 
 * All different $x_{i}$ 
 * Bounds
-     * $1 <= x_{i} <= 6$
+     * $1 <= x_{i} \leq 6$
 
 # R translation
 

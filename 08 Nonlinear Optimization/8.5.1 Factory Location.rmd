@@ -45,7 +45,7 @@ Subject to
 * Add objective function
     * R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sites`, but it is still available for us to do things with.
     * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
-        * `abs(...) <= .001` means we are the same rounded to 3 decimal places (Excel default)
+        * `abs(...) \leq .001` means we are the same rounded to 3 decimal places (Excel default)
         * `1178.106` comes from Excel
 * Add in all constraints
     * Burried in this problem is a notion of centroid. Due to the way the formula is setup, we can infer bounds

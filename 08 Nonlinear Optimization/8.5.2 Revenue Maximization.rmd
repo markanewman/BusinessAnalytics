@@ -1,0 +1,97 @@
+---
+title: "8.5.2 Revenue Maximization"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Why choose this
+
+Per page 219 "A common business problem involves maximizing revenue in the presence of a demand curve. A **demand curve** is simply a function that relates demand volumn to price. But because revenue is the product of price and volume, and volume depends on price, revenue is generally a nonlinear function of price"
+
+# Formulation
+
+Descision variables
+
+$X = p_{d}, p_{e}$
+
+* (D)aytime (P)rice, (E)vening (P)rice
+
+Objective function
+
+* Maxmize: $600d_{d}p_{d} + 840d_{e}p_{e}$
+
+600 comes from minutes in the daytime period (8AM to 6PM). 840 comes from minutes in the evening period (6PM to 8AM).
+
+Subject to
+
+* (D)aytime (D)emand: $d_{d} = 600 - 5000p_{d} + 300p_{e}$
+* (E)vening (D)emand: $d_{e} = 400 + 600p_{d} - 2500p_{e}$
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Get required packages
+* Add objective function
+    * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+    * `nloptr` solves for minimum, to solve for max, use `return(-1*rev)` 
+* Add in all constraints
+    * We can infer the lower bounds because price will never be negitive
+    * We can infer the upper bounds because demand will never be negitive
+        * $0 = 600 - 5000p_{d} + 300*0 => p_{d} = 600/5000$
+        * $0 = 400 + 600*0 - 2500p_{e} => p_{e} = 400/2500$
+* Solve
+    * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+
+**R Results**
+
+$p_{d} = 0.07$, $p_{e} = 0.09$ yealds a revenue of $28043.85$.
+
+**Book results**
+
+Per page 221 "The optimal prices ... DP = 0.070 and EP = 0.091, with a maximum revenue of $28,044 per day"
+
+* There is a misprint here somewhere. See **Code 2** below. DP = 0.070 + EP = 0.091 makes $28,042.98
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('nloptr')) install.packages('nloptr', quiet=TRUE)
+library(nloptr)
+eval_f = function(x) {
+  
+  pd = x[1]
+  pe = x[2]
+  
+  dd = 600 - 5000*pd + 300*pe
+  de = 400 + 600*pd - 2500*pe
+  
+  rev = 600*dd*pd + 840*de*pe
+  
+  return(-1*rev)
+}
+eval_f(c(0,0)) == 0
+lb = c(0,0)
+ub = c(0.12,0.16)
+sp1 = lb
+sp2 = ub
+opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000, xtol_rel=1e-8)
+model1 = nloptr(x0 = sp1, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
+model2 = nloptr(x0 = sp2, eval_f = eval_f, lb = lb, ub = ub, opts = opts)
+round(-1* model1$objective, 2)
+round(-1* model2$objective, 2)
+round(model1$solution, 2)
+round(model2$solution, 2)
+print(model1)
+print(model2)
+```
+
+**Code 2**
+```{r results="hold"}
+600*(600 - 5000*(0.070) + 300*(0.091))*(0.070) + 840*(400 + 600*(0.070) - 2500*(0.091))*(0.091)
+```
