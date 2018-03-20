@@ -1,5 +1,5 @@
 ---
-title: "8.2.1 Optomizing Q1"
+title: "8.2.2 Optimizing Over All Four Quarters"
 author: "Mark Newman"
 output:
   html_document: default
@@ -28,22 +28,20 @@ Static variables
 
 Descision variables
 
-$X = a_{i}$
+$X = [a_{1}, a_{2}, a_{3}, a_{4}]$
 
 * (A)dvertising for quarter ${i}$
-* $X = [a_{1}, a_{2}, a_{3}, a_{4}]$
 
 Objective function
 
 * Maxmize: Revenue - Cost
     * Price\*Units - Cost\*Units - Labor Cost - Advertising - Overhead\*Price\*Units
-        * $p*u_{i} - c*u_{i} - l_{i} - a_{i} - o*p*u_{i}$
+        * $\sum_{i=1}^{4}p*u_{i} - c*u_{i} - l_{i} - a_{i} - o*p*u_{i}$
     * Units: $u_{i} = 35*s_{i}*\sqrt{3000+a_{i}}$ 
   
 Subject to
 
-* Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
-* Only use $a_{1}$ in this example
+* **Not in use**: Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
 
 # R translation
 
@@ -55,7 +53,7 @@ Subject to
 * Add objective function
     * R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sv`, but it is still available for us to do things with.
     * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
-        * `14324` comes from the [Excel download][edl]
+        * `69662` comes from the [Excel download][edl]
     * `nloptr` solves for minimum, to solve for max, use `return(-1*rev)`
 * Add in all constraints
     * We can infer the lower bounds because advertising will never be negitive
@@ -65,13 +63,13 @@ Subject to
 
 **R Results**
 
-$a_{1} = 17091.73$ yealds a total profit of \$15,093.06 in Q1
+$X = [17093.34, 27015.77, 12876.14, 32721.36]$ yealds a total profit of \$79,705.62 for the year based on `model1`. `model2` has a similar performance.
 
 **Book results**
 
-Per page 210 "The optimal expenditure in Q1 is \$17,093, and the corresponding revenue is \$70,431"
+Per page 210 "The table below summarizes the results..." Per page 211 "... showing a profit of $79,706"
 
-* \$70,431 comes from spending \$17,093 in Q1 and $10k in each of Q2,Q3,Q4. This seems a confusing way to list things, but at least the book says "... that would push the total expenditures boyond the budget" at the end of the section.
+* Same caviot here as in 8.2.1.
 
 **Code**
 ```{r results="hold"}
@@ -82,15 +80,16 @@ library(nloptr)
 sv = list(s = c(.9,1.1,.8,1.2), l = c(8000,8000,9000,9000), p = 40, c = 25, o = .15)
 eval_f = function(x) {
 
-  a = x[1]
-  u = 35*sv$s[1]*sqrt(3000+a)
-  prof = sv$p*u - sv$c*u - sv$l[1] - a - sv$o*sv$p*u
-  
-  return(-1*prof)
+  a = x
+  u = 35*sv$s*sqrt(3000+a)
+  prof = sv$p*u - sv$c*u - sv$l - a - sv$o*sv$p*u
+  total = sum(prof)
+
+  return(-1*total)
 }
-round(-1*eval_f(c(10000))) == 14324
-lb = c(0)
-ub = c(40000)
+round(-1*eval_f(c(10000,10000,10000,10000))) == 69662
+lb = c(0,0,0,0)
+ub = c(40000,40000,40000,40000)
 sp1 = lb
 sp2 = ub
 opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)

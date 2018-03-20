@@ -1,0 +1,119 @@
+---
+title: "8.2.3 Incorporating the Budget Constraint"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Why choose this
+
+This is a toy sample of how things work. It is used throughout the book starting on **p50**. Everything that uses this sample will start with information from there.
+
+# Tables
+
+| | Variable | Q1 | Q2 | Q3 | Q4 |
+|:--:|:--:|:--:|:--:|:--:|:--:|
+| Seasonal Adjustment | $s_{i}$ | .9 | 1.1 | .8 | 1.2 |
+| Labor Cost | $l_{i}$ | 8000 | 8000 | 9000 | 9000 |
+
+# Formulation
+
+Static variables
+
+* Price per unit: $p = 40$
+* Cost per unit: $c = 25$
+* Overhead rate: $o = .15$
+
+Descision variables
+
+$X = [a_{1}, a_{2}, a_{3}, a_{4}]$
+
+* (A)dvertising for quarter ${i}$
+
+Objective function
+
+* Maxmize: Revenue - Cost
+    * Price\*Units - Cost\*Units - Labor Cost - Advertising - Overhead\*Price\*Units
+        * $\sum_{i=1}^{4}p*u_{i} - c*u_{i} - l_{i} - a_{i} - o*p*u_{i}$
+    * Units: $u_{i} = 35*s_{i}*\sqrt{3000+a_{i}}$ 
+  
+Subject to
+
+* Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
+
+# R translation
+
+**Process**
+
+* Clear everything
+* Get required packages
+* Add in all the static variables
+* Add objective function
+    * R has a funny notion of scoping. Everything is in scope, unless it is overwriten. In this case we don't pass in `sv`, but it is still available for us to do things with.
+    * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+        * `69662` comes from the [Excel download][edl]
+    * `nloptr` solves for minimum, to solve for max, use `return(-1*rev)`
+* Add in all constraints
+    * We can infer the lower bounds because advertising will never be negitive
+    * We can infer the upper bounds because advertising will never exced $40k for the year
+    * All constraints need to be of the form $g(x) \leq 0$ or $g(x) = 0$
+    * **ALWAYS** double check the constraint function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way. `all(...)` is not strictly needed, but is included because _in general_ there is more than one constraint.
+* Solve
+    * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+
+**R Results**
+
+$X = [7272.15, 12346.30,  5118.01, 15263.54]$ yealds a total profit of \$71,446.79 for the year based on `model1`. `model2` has a similar performance.
+
+**Book results**
+
+Per page 212 "... the optimal profit is $71,447, as shown in Figure 8.8"
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('nloptr')) install.packages('nloptr', quiet=TRUE)
+library(nloptr)
+sv = list(s = c(.9,1.1,.8,1.2), l = c(8000,8000,9000,9000), p = 40, c = 25, o = .15)
+eval_f = function(x) {
+
+  a = x
+  
+  u = 35*sv$s*sqrt(3000+a)
+  prof = sv$p*u - sv$c*u - sv$l - a - sv$o*sv$p*u
+  total = sum(prof)
+
+  return(-1*total)
+}
+eval_g_ineq = function(x) {
+  
+    a = x
+    
+    sb = sum(a) - 40000
+    
+    return(c(sb))
+}
+round(-1*eval_f(c(10000,10000,10000,10000))) == 69662
+all(eval_g_ineq(c(10000,10000,10000,10000)) == c(0))
+all(eval_g_ineq(c(10000,10000,10000,10001)) == c(1))
+lb = c(0,0,0,0)
+ub = c(40000,40000,40000,40000)
+sp1 = lb
+sp2 = ub
+opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
+model1 = nloptr(x0 = sp1, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
+model2 = nloptr(x0 = sp2, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts)
+round(-1*model1$objective, 2)
+round(-1*model2$objective, 2)
+round(model1$solution, 2)
+round(model2$solution, 2)
+print(model1)
+print(model2)
+```
+
+---------
+
+[edl]: http://faculty.tuck.dartmouth.edu/images/uploads/faculty/management-science/Figures_8.xlsx
