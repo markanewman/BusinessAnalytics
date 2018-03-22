@@ -14,13 +14,14 @@ Folders correspond to the names of the chapters. Files correspond to the differe
 
 Refrences
 
-1. Berkelaar, M et al. (2015). lpSolve: Interface to 'Lp_solve' v. 5.5 to Solve Linear/Integer Programs. [Online] https://CRAN.R-project.org/package=lpSolve
-2. Conceicao, E,  Maechler, M. (2016). DEoptimR: Differential Evolution Optimization in Pure R. [Online] https://CRAN.R-project.org/package=DEoptimR
-3. Konis, Kjell (2016). lpSolveAPI: R Interface to 'lp_solve' Version 5.5.2.0. [Online] 
-https://CRAN.R-project.org/package=lpSolveAPI 
-4. Powell, S. G., & Baker, K. R. (2016). Business Analytics: The art of modeling with spreadsheets. Wiley. [Online] http://faculty.tuck.dartmouth.edu/management-science/
-5. R Core Team. (2017). R: A Language and Environment for Statistical Computing. [Online] https://www.R-project.org/
-6. Ypma, Jelmer et al. (2017). nloptr: R interface to NLopt. [Online] https://CRAN.R-project.org/package=nloptr
+1. Berkelaar, M et al. (2015). Interface to 'Lp_solve' v. 5.5 to Solve Linear/Integer Programs. [Online] https://CRAN.R-project.org/package=lpSolve
+2. Carnell, R. (2017). Provides the Standard Distribution Functions for the Triangle Distribution. [Online] https://cran.r-project.org/package=triangle
+3. Conceicao, E,  Maechler, M. (2016). Differential Evolution Optimization in Pure R. [Online] https://CRAN.R-project.org/package=DEoptimR
+4. Konis, Kjell (2016). R Interface to 'lp_solve' Version 5.5.2.0. [Online] https://CRAN.R-project.org/package=lpSolveAPI
+5. Leschinski, C. H. (2018). Automatic Parallelized Monte Carlo Simulations. [Online] https://cran.r-project.org/package=MonteCarlo
+6. Powell, S. G., & Baker, K. R. (2016). Business Analytics: The art of modeling with spreadsheets. Wiley. [Online] http://faculty.tuck.dartmouth.edu/management-science/
+7. R Core Team. (2017). R: A Language and Environment for Statistical Computing. [Online] https://www.R-project.org/
+8. Ypma, Jelmer et al. (2017). nloptr: R interface to NLopt. [Online] https://CRAN.R-project.org/package=nloptr
 
 [anly705]: http://harrisburgu.edu/andp-program-main/andp-core-req/
 [book]: http://faculty.tuck.dartmouth.edu/management-science/

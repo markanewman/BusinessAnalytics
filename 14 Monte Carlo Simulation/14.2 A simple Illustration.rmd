@@ -1,0 +1,193 @@
+---
+title: "14.2 A simple Illustration"
+author: "Mark Newman"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Why choose this
+
+This is a toy sample of how things work. It is used throughout the book starting on **p50**. Everything that uses this sample will start with information from there.
+
+# Tables
+
+| | Variable | Q1 | Q2 | Q3 | Q4 |
+|:--:|:--:|:--:|:--:|:--:|:--:|
+| Seasonal Adjustment | $s_{i}$ | .9 | 1.1 | .8 | 1.2 |
+| Labor Cost | $l_{i}$ | 8000 | 8000 | 9000 | 9000 |
+
+# Formulation
+
+Static variables
+
+* Price per unit: $p = \Delta(30,45,50)$
+* Cost per unit: $c = \Delta(10,20,35)$
+* Overhead rate: $o = .15$
+
+Descision variables
+
+$X = [a_{1}, a_{2}, a_{3}, a_{4}]$
+
+* (A)dvertising for quarter ${i}$
+
+Objective function
+
+* Maxmize: Revenue - Cost
+    * Price\*Units - Cost\*Units - Labor Cost - Advertising - Overhead\*Price\*Units
+        * $\sum_{i=1}^{4}p*u_{i} - c*u_{i} - l_{i} - a_{i} - o*p*u_{i}$
+    * Units: $u_{i} = 35*s_{i}*\sqrt{3000+a_{i}}$ 
+  
+Subject to
+
+* Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
+
+# R translation
+
+**Process Summery**
+
+Making a Monte Carlo simulation is a 3 step process.
+
+1. Make the non-Monte Carlo version. Test and record result
+2. Wrap the whole thing in a function. Test without simulation, making sure the same value is returned
+    * Pull sub functions outside so they can be tested in isolation
+3. Run the Monte Carlo simulation on the single function
+
+**Process**
+
+* Clear everything
+* Get required packages
+* Create an objective function
+    * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+            * `69662` comes from the [Excel download][edl]
+    * `nloptr` solves for minimum, to solve for max, use `return(-1*rev)`
+* Create a constraint function
+    * All constraints need to be of the form $g(x) \leq 0$ or $g(x) = 0$
+    * **ALWAYS** double check the constraint function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way. `all(...)` is not strictly needed, but is included because _in general_ there is more than one constraint.
+    * `sv` is required in the `eval_g_ineq(...)` function to matain symetry with `eval_f(...)`
+* Make the wrapper function
+    * Be carefull with scope.
+    * Add in all the static variables
+    * Add objective function
+        * **ALWAYS** double check the objective function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+            * `69662` comes from the [Excel download][edl]
+        * `nloptr` solves for minimum, to solve for max, use `return(-1*rev)`
+    * Add in all constraints
+        * We can infer the lower bounds because advertising will never be negitive
+        * We can infer the upper bounds because advertising will never exced $40k for the year
+    * Solve
+        * When using a non-linear solver, always do at least 2 starting positions. Upper (`ub`) and lower (`lb`) bounds are usualy good bets.
+    * **ALWAYS** double check Monte Carlo function, sometimes it _looks_ right, but is not. A single hand calculation goes a _lonnnng_ way.
+        * The values for `res$obj` and `res$dv` come from running the code prior to function conversion.
+* Run the Monte Carlo simulation
+    * Use `set.seed(1)` to enable reproduceability accross R runs
+    * Monte Carlo is nothing more than a loop. Don't bother with a package unless you need grid based simulations.
+    * Plot
+
+**R Results**
+
+Keep in mind that a simulation is by defnition not _necessarly_ replicated accross different platforms. Mainly you are looking for _close enough_ when compareing to the book.
+
+* Mean: $149,399
+* Standard Deviation: $97,843
+* 5th Percentile: ($12,281)
+* 95th Percentile: $311,930 
+* Positive Profit %: 92  
+
+**Book results**
+
+Per page 385
+
+* Mean: $147,851
+* Standard Deviation: $101,189
+* 5th Percentile: ($23,287)
+* 95th Percentile: $300,451 
+* Positive Profit %: 91.1
+
+**Code**
+```{r results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('nloptr')) install.packages('nloptr', quiet=TRUE)
+if (!require('triangle')) install.packages('triangle', quiet=TRUE)
+library(nloptr)
+library(triangle)
+
+eval_f = function(x, sv) {
+
+  a = x
+  
+  u = 35*sv$s*sqrt(3000+a)
+  prof = sv$p*u - sv$c*u - sv$l - a - sv$o*sv$p*u
+  total = sum(prof)
+
+  return(-1*total)
+}
+eval_g_ineq = function(x, sv) {
+  
+  a = x
+  
+  sb = sum(a) - 40000
+  
+  return(c(sb))
+}
+
+sv = list(s = c(.9,1.1,.8,1.2), l = c(8000,8000,9000,9000), p = 40, c = 25, o = .15)
+round(-1*eval_f(c(10000,10000,10000,10000), sv)) == 69662
+all(eval_g_ineq(c(10000,10000,10000,10000), sv) == c(0))
+all(eval_g_ineq(c(10000,10000,10000,10001), sv) == c(1))
+  
+mcfunc = function(sv) {
+  
+  lb = c(0,0,0,0)
+  ub = c(40000,40000,40000,40000)
+  sp1 = lb
+  sp2 = ub
+  opts = list(algorithm="NLOPT_LN_COBYLA", maxeval=4000)
+  model1 = nloptr(x0 = sp1, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts, sv = sv)
+  model2 = nloptr(x0 = sp2, eval_f = eval_f, eval_g_ineq = eval_g_ineq, lb = lb, ub = ub, opts = opts, sv = sv)
+  m1 = -1*model1$objective
+  m2 = -1*model2$objective
+  
+  obj = m1
+  dv = model1$solution
+  if(m1 < m2) {
+    obj = m2
+    dv = model2$solution
+  }
+  
+  return(list(obj=obj, dv=dv))
+}
+
+res = mcfunc(sv)
+round(res$obj, 2) == 71446.79
+all(round(res$dv, 2) == c(7272.82, 12346.10, 5117.42, 15263.65))
+
+set.seed(1)
+nsim = 10000
+res = vector(mode="list", length=10000)
+for(i in 1:length(res)) {
+  sv$p = rtriangle(1,30,50,45)
+  sv$c = rtriangle(1,10,35,20)
+  res[[i]] = mcfunc(sv)
+}
+names = names(unlist(head(res, 1)))
+res = as.data.frame(matrix(unlist(res), ncol = 5, byrow = TRUE))
+colnames(res) = names
+
+s = sort(res$obj)
+poi = c(mean(res$obj), sd(res$obj), s[floor(.05*length(s))], s[ceiling(.95*length(s))], 100*sum(s>0)/length(s))
+hist(res$obj,prob = TRUE, main="Profit Distribution", xlab = "Dollars")
+lines(density(res$obj))
+abline(v = poi[3], col = "red")
+abline(v = poi[1], col = "blue")
+abline(v = poi[4], col = "green")
+text = sprintf("%s: %s%s", c("Mean", "Standard Deviation", "5th Percentile", "95th Percentile", "Positive Profit %"), c("$","$","$","$",""), round(poi))
+col = text.col=c("blue", "black", "red", "green", "black")
+legend("topright", text, col=col, text.col=col, lwd = c(1,NA,1,1,NA))
+```
+
+---------
+
+[edl]: http://faculty.tuck.dartmouth.edu/images/uploads/faculty/management-science/Figures_8.xlsx
