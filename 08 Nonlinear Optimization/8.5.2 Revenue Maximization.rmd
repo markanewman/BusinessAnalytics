@@ -30,6 +30,12 @@ Subject to
 * (D)aytime (D)emand: $d_{d} = 600 - 5000p_{d} + 300p_{e}$
 * (E)vening (D)emand: $d_{e} = 400 + 600p_{d} - 2500p_{e}$
 
+**Book results**
+
+Per page 221 "The optimal prices ... DP = 0.070 and EP = 0.091, with a maximum revenue of $28,044 per day"
+
+* There is a misprint here somewhere. See **Code 2** below. DP = 0.070 + EP = 0.091 makes $28,042.98
+
 # R translation
 
 **Process**
@@ -50,12 +56,6 @@ Subject to
 **R Results**
 
 $p_{d} = 0.07$, $p_{e} = 0.09$ yealds a revenue of $28043.85$.
-
-**Book results**
-
-Per page 221 "The optimal prices ... DP = 0.070 and EP = 0.091, with a maximum revenue of $28,044 per day"
-
-* There is a misprint here somewhere. See **Code 2** below. DP = 0.070 + EP = 0.091 makes $28,042.98
 
 **Code**
 ```{r results="hold"}

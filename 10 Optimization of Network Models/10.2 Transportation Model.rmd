@@ -3,20 +3,9 @@ title: "10.2 Transportation Model"
 author: "Mark Newman"
 output:
   html_document: default
+editor_options: 
+  chunk_output_type: console
 ---
-
-# Clear everything
-```{r}
-rm(list = ls())
-options(scipen = 999)
-```
-
-# Required packages
-```{r message=FALSE, warning=FALSE}
-if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
-source("../Helper Scripts/rbindPattern.r")
-source("../Helper Scripts/lpPrettyPrint.r")
-```
 
 # LP Formulation
 
@@ -39,83 +28,7 @@ Subject to:
 * Chicago: MC + PC + TC >= 9500
 * Denver: MD + PD + TD >= 8000
 
-# R translation
-
-Descision variables
-```{r}
-dv.f = c("m", "p", "t")
-dv.t = c("a", "b", "c", "d")
-dv = c("MA","MB", "MC", "MD", "PA", "PB", "PC", "PD", "TA", "TB", "TC", "TD")
-```
-
-* the `dv` here is the cross product of the to and from variables
-
-Cost Matrix
-```{r}
-cost.m = c(.60, .56, .22, .40)
-cost.p = c(.36, .30, .28, .58)
-cost.t = c(.65, .68, .55, .42)
-cost = rbindPattern("cost\\..+")
-```
-
-* The regular expression `cost\\..+` matches anything that starts with "cost." and has at least one other character on the end
-* Format your costs with the same number of decimal places as a form of visual QA
-
-Capacity & Demand
-```{r}
-cap = c(9000, 12000, 13000)
-dem = c(7500, 8500, 9500, 8000)
-```
-
-Objective function
-```{r}
-obj = as.vector(t(cost))
-names(obj) = dv
-```
-
-* `as.vector(t(cost))` unrolls the cost matrix above by row, which matched how we declaired our `dv`
-* naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
-
-Requirments
-```{r}
-req.1m = c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
-req.2p = c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)
-req.3t = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1)
-req.4a = c(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-req.5b = c(0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
-req.6c = c(0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0)
-req.7d = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
-```
-
-* `lp` assumes all varables are >= 0, so we don't need to add that in too
-* `req.#??` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
-  * The # in `req.#??` is to force the sort order so we can make sure we get the direction (>= & <=) in the right order
-
-Constraints
-```{r}
-con = c(cap, dem)
-```
-
-Solve
-```{r}
-lhs = rbindPattern("req\\..+")
-dir = c("<=", "<=", "<=", ">=", ">=", ">=", ">=")
-rhs = con
-
-model = lpSolve::lp ("min", obj, lhs, dir, rhs, all.int=TRUE)
-model$objval
-model$solution
-
-lppp(model)
-```
-
-* `all.int=TRUE` forces in integer solution. If you dont have this TC will be 499.999999999999
-* `model$objval` is the value of the __Objective Function__
-* `model$solution` are the values of the __Descision Variables__
-* `lppp(...)` so you can see a pretty print of the `model`
-
-
-# Book results
+**Book results**
 
 Per page 280 "... the solution shown in Figure 10.4, which achieves the minimum cost of $12,025"
 
@@ -127,5 +40,62 @@ This matches our result `$Solution` MA=0,MB=0,MC=9000,MD=0,PA=3500,PB=8500,PC=0,
 
 * Remove 0s: MC=9000,PA=3500,PB=8500,TA=4000,TC=500,TD=8000 yealds 12025
 
+# R translation
 
+**Process**
 
+* Clear everything
+* Required packages
+* Descision variables
+    * the `dv` here is the cross product of the to and from variables
+* Cost Matrix
+    * The regular expression `cost\\..+` matches anything that starts with "cost." and has at least one other character on the end
+    * Format your costs with the same number of decimal places as a form of visual QA
+* Capacity & Demand
+* Objective function
+    * `as.vector(t(cost))` unrolls the cost matrix above by row, which matched how we declaired our `dv`
+    * naming (`names(obj) = dv`) our objective function variables makes `lppp(...)` look nicer
+* Requirments
+    * `lp` assumes all varables are >= 0, so we don't need to add that in too
+    * `req.#??` is a special naming convention used by `rbindPattern` which will line up the left hand side (`lhs`) and right hand side (`rhs`) for us in an easy manner
+        * The # in `req.#??` is to force the sort order so we can make sure we get the direction (>= & <=) in the right order
+* Constraints
+* Solve
+    * `all.int=TRUE` forces in integer solution. If you dont have this TC will be 499.999999999999
+    * `model$objval` is the value of the __Objective Function__
+    * `model$solution` are the values of the __Descision Variables__
+    * `lppp(...)` so you can see a pretty print of the `model`
+
+```{r  results="hold"}
+rm(list = ls())
+options(scipen = 999)
+if (!require('lpSolve')) install.packages('lpSolve', quiet=TRUE)
+source("../Helper Scripts/rbindPattern.r")
+source("../Helper Scripts/lpPrettyPrint.r")
+dv.f = c("m", "p", "t")
+dv.t = c("a", "b", "c", "d")
+dv = c("MA","MB", "MC", "MD", "PA", "PB", "PC", "PD", "TA", "TB", "TC", "TD")
+cost.m = c(.60, .56, .22, .40)
+cost.p = c(.36, .30, .28, .58)
+cost.t = c(.65, .68, .55, .42)
+cost = rbindPattern("cost\\..+")
+cap = c(9000, 12000, 13000)
+dem = c(7500, 8500, 9500, 8000)
+obj = as.vector(t(cost))
+names(obj) = dv
+req.1m = c(1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0)
+req.2p = c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0)
+req.3t = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1)
+req.4a = c(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+req.5b = c(0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
+req.6c = c(0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0)
+req.7d = c(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+con = c(cap, dem)
+lhs = rbindPattern("req\\..+")
+dir = c("<=", "<=", "<=", ">=", ">=", ">=", ">=")
+rhs = con
+model = lpSolve::lp ("min", obj, lhs, dir, rhs, all.int=TRUE)
+model$objval
+model$solution
+lppp(model)
+```

@@ -35,6 +35,10 @@ Subject to
 
 * None
 
+**Book results**
+
+Per page 219 "The optimal solution ... is the location (114.1, 35.2) ... of approximately 670.6"
+
 # R translation
 
 **Process**
@@ -55,10 +59,6 @@ Subject to
 **R Results**
 
 $x = 114.07$, $y = 35.17$ yealds a distince of 670.64
-
-**Book results**
-
-Per page 219 "The optimal solution ... is the location (114.1, 35.2) ... of approximately 670.6"
 
 **Code**
 ```{r results="hold"}

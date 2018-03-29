@@ -44,6 +44,12 @@ Subject to
 * **Not in use**: Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
 * Use only $a_{1}$ in this example
 
+**Book results**
+
+Per page 210 "The optimal expenditure in Q1 is \$17,093, and the corresponding revenue is \$70,431"
+
+* \$70,431 comes from spending \$17,093 in Q1 and $10k in each of Q2,Q3,Q4. The 8.2.x is intended as a multipart walkthrough. This may seem counterintitive, just bear with it.
+
 # R translation
 
 **Process**
@@ -65,12 +71,6 @@ Subject to
 **R Results**
 
 $a_{1} = 17091.73$ yealds a total profit of \$15,093.06 in Q1 based on `model1`. `model2` has a similar performance.
-
-**Book results**
-
-Per page 210 "The optimal expenditure in Q1 is \$17,093, and the corresponding revenue is \$70,431"
-
-* \$70,431 comes from spending \$17,093 in Q1 and $10k in each of Q2,Q3,Q4. The 8.2.x is intended as a multipart walkthrough. This may seem counterintitive, just bear with it.
 
 **Code**
 ```{r results="hold"}

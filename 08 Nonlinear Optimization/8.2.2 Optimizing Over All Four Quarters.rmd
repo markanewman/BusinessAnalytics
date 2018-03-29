@@ -43,6 +43,12 @@ Subject to
 
 * **Not in use**: Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
 
+**Book results**
+
+Per page 210 "The table below summarizes the results..." Per page 211 "... showing a profit of $79,706"
+
+* Same caviot here as in 8.2.1.
+
 # R translation
 
 **Process**
@@ -64,12 +70,6 @@ Subject to
 **R Results**
 
 $X = [17093.34, 27015.77, 12876.14, 32721.36]$ yealds a total profit of \$79,705.62 for the year based on `model1`. `model2` has a similar performance.
-
-**Book results**
-
-Per page 210 "The table below summarizes the results..." Per page 211 "... showing a profit of $79,706"
-
-* Same caviot here as in 8.2.1.
 
 **Code**
 ```{r results="hold"}

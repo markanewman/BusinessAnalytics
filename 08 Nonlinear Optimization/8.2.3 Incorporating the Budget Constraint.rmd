@@ -43,6 +43,10 @@ Subject to
 
 * Sales budget: $0 \leq \sum_{i=1}^{4}a_{i} \leq 40000$
 
+**Book results**
+
+Per page 212 "... the optimal profit is $71,447, as shown in Figure 8.8"
+
 # R translation
 
 **Process**
@@ -66,10 +70,6 @@ Subject to
 **R Results**
 
 $X = [7272.15, 12346.30,  5118.01, 15263.54]$ yealds a total profit of \$71,446.79 for the year based on `model1`. `model2` has a similar performance.
-
-**Book results**
-
-Per page 212 "... the optimal profit is $71,447, as shown in Figure 8.8"
 
 **Code**
 ```{r results="hold"}
